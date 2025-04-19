@@ -1,0 +1,26 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+      - 'feature/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile --strict-peer-dependencies
+      - run: pnpm run lint
+      - run: pnpm run build
+      - run: pnpm test --coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          slug: tobrien/cabazooka
+          token: ${{ secrets.CODECOV_TOKEN }}

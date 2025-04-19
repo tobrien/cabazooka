@@ -1,0 +1,10 @@
+.env 
+dist
+node_modules
+*.log
+.vscode
+coverage/
+test/
+output/
+input/
+.cabazooka/
