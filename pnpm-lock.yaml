@@ -118,8 +118,8 @@ importers:
         specifier: ^4.5.3
         version: 4.5.3(@types/node@22.14.0)(rollup@4.39.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0))
       vite-plugin-node:
-        specifier: ^5.0.0
-        version: 5.0.0(@swc/core@1.11.16)(vite@6.2.5(@types/node@22.14.0))
+        specifier: ^5.0.1
+        version: 5.0.1(@swc/core@1.11.16)(vite@6.2.5(@types/node@22.14.0))
 
 packages:
 
@@ -2899,11 +2899,11 @@ packages:
       vite:
         optional: true
 
-  vite-plugin-node@5.0.0:
-    resolution: {integrity: sha512-xvfx5SH4hhzGj3fR9OAohW5KAH0iAvZkcB35xBGG6FGZ7qlV8C7BXC4HZsOalkYzgASzveQPoq7D3ffU1Nx54Q==}
+  vite-plugin-node@5.0.1:
+    resolution: {integrity: sha512-xdR4UW1h2ZM1wBf4pjwzuty/mX6F/GViB8h1iqOpxr81pa5OuWb3IJghl66v4e7Srsi2p5o22n9G7G46FeZK9Q==}
     peerDependencies:
       '@swc/core': ^1.7.26
-      vite: 'catalog:'
+      vite: ^6.2.2
     peerDependenciesMeta:
       '@swc/core':
         optional: true
@@ -6245,7 +6245,7 @@ snapshots:
       - rollup
       - supports-color
 
-  vite-plugin-node@5.0.0(@swc/core@1.11.16)(vite@6.2.5(@types/node@22.14.0)):
+  vite-plugin-node@5.0.1(@swc/core@1.11.16)(vite@6.2.5(@types/node@22.14.0)):
     dependencies:
       '@rollup/pluginutils': 4.2.1
       chalk: 4.1.2
