@@ -4,9 +4,11 @@ import { Logger } from "winston";
 import * as Arguments from './arguments';
 import * as Output from './output';
 import * as Storage from './util/storage';
+import * as Options from './options';
 
+export * from './options';
 
-export interface Instance {
+export interface Cabazooka {
     configure: (command: Command) => Promise<Command>;
     setLogger: (logger: Logger) => void;
     validate: (input: Input) => Promise<Config>;
@@ -17,26 +19,6 @@ export interface Operator {
     process: (callback: (file: string) => Promise<void>) => Promise<void>;
     constructFilename: (createDate: Date, type: string, hash: string, options?: { subject?: string }) => Promise<string>;
     constructOutputDirectory: (createDate: Date) => Promise<string>;
-}
-
-export type FilenameOption = 'date' | 'time' | 'subject';
-export type OutputStructure = 'none' | 'year' | 'month' | 'day';
-
-export interface Options {
-    defaults?: {
-        timezone?: string;
-        recursive?: boolean;
-        inputDirectory?: string;
-        outputDirectory?: string;
-        outputStructure?: OutputStructure;
-        filenameOptions?: FilenameOption[];
-        extensions?: string[];
-    },
-    allowed?: {
-        outputStructures?: OutputStructure[];
-        filenameOptions?: FilenameOption[];
-        extensions?: string[];
-    },
 }
 
 export interface Input {
@@ -54,12 +36,12 @@ export interface Config {
     recursive: boolean;
     inputDirectory: string;
     outputDirectory: string;
-    outputStructure: OutputStructure;
-    filenameOptions: FilenameOption[];
+    outputStructure: Options.OutputStructure;
+    filenameOptions: Options.FilenameOption[];
     extensions: string[];
 }
 
-export const create = (options: Options): Instance => {
+export const create = (options: Options.Options): Cabazooka => {
 
     let logger: Logger | typeof console = console;
 
@@ -84,12 +66,19 @@ export const create = (options: Options): Instance => {
 
         const process = async (callback: (file: string) => Promise<void>) => {
 
+            if (!options.isFeatureEnabled('input')) {
+                throw new Error('Input feature is not enabled, skipping input processing');
+            }
+
             // Look through all files in the input directory
             const inputDirectory = config.inputDirectory;
 
             const storage: Storage.Utility = Storage.create({ log: logger.debug });
 
-            const filePattern = `${config.recursive ? '**/' : ''}*.{${config.extensions.join(',')}}`;
+            let filePattern = `${config.recursive ? '**/' : ''}*`;
+            if (options.isFeatureEnabled('extensions') && config.extensions.length > 0) {
+                filePattern += `.{${config.extensions.join(',')}}`;
+            }
 
             logger.info('Processing files in %s with pattern %s', inputDirectory, filePattern);
             let fileCount = 0;
@@ -107,11 +96,17 @@ export const create = (options: Options): Instance => {
 
         }
 
-        const constructFilename = async (createDate: Date, type: string, hash: string, options?: { subject?: string }): Promise<string> => {
-            return output.constructFilename(createDate, type, hash, options);
+        const constructFilename = async (createDate: Date, type: string, hash: string, context?: { subject?: string }): Promise<string> => {
+            if (!options.isFeatureEnabled('output')) {
+                throw new Error('Output feature is not enabled, skipping output construction');
+            }
+            return output.constructFilename(createDate, type, hash, context);
         }
 
         const constructOutputDirectory = async (createDate: Date): Promise<string> => {
+            if (!options.isFeatureEnabled('output')) {
+                throw new Error('Output feature is not enabled, skipping output construction');
+            }
             return output.constructOutputDirectory(createDate);
         }
 

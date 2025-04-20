@@ -14,7 +14,8 @@ import {
 import { ArgumentError } from "./error/ArgumentError";
 import * as Dates from "./util/dates";
 import * as Storage from "./util/storage";
-import { Options, Config, OutputStructure, FilenameOption, Input } from "./cabazooka";
+import { Config, Input } from "./cabazooka";
+import { FilenameOption, OutputStructure, Options } from "options";
 
 export const create = (options: Options): {
     configure: (command: Command) => Promise<Command>;
@@ -25,46 +26,59 @@ export const create = (options: Options): {
     const storage = Storage.create({ log: logger.debug });
 
     const configure = async (command: Command): Promise<Command> => {
-        command.option('--timezone <timezone>', 'timezone for date calculations', options.defaults?.timezone || DEFAULT_TIMEZONE)
-            .option('-r, --recursive', 'recursive mode, process all files in the input directory', options.defaults?.recursive || DEFAULT_RECURSIVE)
-            .option('-o, --output-directory <outputDirectory>', 'output directory', options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY)
-            .option('-i, --input-directory <inputDirectory>', 'input directory', options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY)
-            .option('--output-structure <type>', 'output directory structure (none/year/month/day)', options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE)
-            .option('--filename-options [filenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.defaults?.filenameOptions || DEFAULT_FILENAME_OPTIONS)
-            .option('--extensions [extensions...]', 'file extensions to process (space-separated list of: mp3,mp4,mpeg,mpga,m4a,wav,webm)', options.defaults?.extensions || DEFAULT_EXTENSIONS);
+        let retCommand = command;
+        retCommand = retCommand.option('--timezone <timezone>', 'timezone for date calculations', options.defaults?.timezone || DEFAULT_TIMEZONE)
+        if (options.isFeatureEnabled('input')) {
+            retCommand = retCommand.option('-r, --recursive', 'recursive mode, process all files in the input directory', options.defaults?.recursive || DEFAULT_RECURSIVE)
+            retCommand = retCommand.option('-i, --input-directory <inputDirectory>', 'input directory', options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY)
+        }
+        if (options.isFeatureEnabled('output')) {
+            retCommand = retCommand.option('-o, --output-directory <outputDirectory>', 'output directory', options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY)
+        }
+        if (options.isFeatureEnabled('structured-output')) {
+            retCommand = retCommand.option('--output-structure <type>', 'output directory structure (none/year/month/day)', options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE)
+            retCommand = retCommand.option('--filename-options [filenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.defaults?.filenameOptions || DEFAULT_FILENAME_OPTIONS)
+        }
+        if (options.isFeatureEnabled('extensions')) {
+            retCommand = retCommand.option('--extensions [extensions...]', 'file extensions to process (space-separated list of: mp3,mp4,mpeg,mpga,m4a,wav,webm)', options.defaults?.extensions || DEFAULT_EXTENSIONS);
+        }
 
-        return command;
+        return retCommand;
     }
 
     const validate = async (input: Input): Promise<Config> => {
 
+        const config: Partial<Config> = {};
+
         // Validate timezone
         const timezone: string = validateTimezone(input.timezone);
+        config.timezone = timezone;
 
-
-        if (input.inputDirectory) {
+        if (options.isFeatureEnabled('input') && input.inputDirectory) {
             await validateInputDirectory(input.inputDirectory);
+            config.inputDirectory = input.inputDirectory ?? DEFAULT_INPUT_DIRECTORY;
+            config.recursive = input.recursive ?? DEFAULT_RECURSIVE;
         }
 
-        if (input.outputDirectory) {
+        if (options.isFeatureEnabled('output') && input.outputDirectory) {
             await validateOutputDirectory(input.outputDirectory);
+            config.outputDirectory = input.outputDirectory ?? DEFAULT_OUTPUT_DIRECTORY;
         }
 
-        // Validate filename options if provided
-        validateOutputStructure(input.outputStructure);
-        validateFilenameOptions(input.filenameOptions, input.outputStructure as OutputStructure);
+        if (options.isFeatureEnabled('structured-output')) {
+            // Validate filename options if provided
+            validateOutputStructure(input.outputStructure);
+            validateFilenameOptions(input.filenameOptions, input.outputStructure as OutputStructure);
+            config.outputStructure = (input.outputStructure ?? DEFAULT_OUTPUT_STRUCTURE) as OutputStructure;
+            config.filenameOptions = (input.filenameOptions ?? DEFAULT_FILENAME_OPTIONS) as FilenameOption[];
+        }
 
-        validateExtensions(input.extensions);
+        if (options.isFeatureEnabled('extensions')) {
+            validateExtensions(input.extensions);
+            config.extensions = input.extensions ?? DEFAULT_EXTENSIONS;
+        }
 
-        return {
-            extensions: input.extensions ?? DEFAULT_EXTENSIONS,
-            filenameOptions: (input.filenameOptions ?? DEFAULT_FILENAME_OPTIONS) as FilenameOption[],
-            inputDirectory: input.inputDirectory ?? DEFAULT_INPUT_DIRECTORY,
-            outputDirectory: input.outputDirectory ?? DEFAULT_OUTPUT_DIRECTORY,
-            outputStructure: (input.outputStructure ?? DEFAULT_OUTPUT_STRUCTURE) as OutputStructure,
-            recursive: input.recursive ?? DEFAULT_RECURSIVE,
-            timezone: timezone,
-        };
+        return config as Config;
     }
 
     const validateInputDirectory = async (inputDirectory: string) => {
@@ -83,7 +97,7 @@ export const create = (options: Options): {
     }
 
     const validateOutputStructure = (outputStructure: string | undefined): void => {
-        const validOptions = options.allowed?.outputStructures || ALLOWED_OUTPUT_STRUCTURES;
+        const validOptions: OutputStructure[] = options.allowed?.outputStructures || ALLOWED_OUTPUT_STRUCTURES;
         if (outputStructure && !validOptions.includes(outputStructure as OutputStructure)) {
             throw new ArgumentError('--output-structure', `Invalid output structure: ${outputStructure}. Valid options are: ${validOptions.join(', ')}`);
         }

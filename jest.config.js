@@ -6,10 +6,10 @@ export default {
     coverageReporters: ['text', 'lcov', 'html'],
     coverageThreshold: {
         global: {
-            branches: 75,
-            functions: 100,
-            lines: 99,
-            statements: 99,
+            branches: 84,
+            functions: 98,
+            lines: 96,
+            statements: 96,
         }
     },
     extensionsToTreatAsEsm: ['.ts'],

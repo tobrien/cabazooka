@@ -1,9 +1,10 @@
 import path from 'path';
-import { Options, Config } from './cabazooka';
+import { Config } from './cabazooka';
 import { DATE_FORMAT_DAY, DATE_FORMAT_MONTH, DATE_FORMAT_MONTH_DAY, DATE_FORMAT_YEAR, DATE_FORMAT_YEAR_MONTH_DAY } from './constants';
 import * as Dates from './util/dates';
 import * as Storage from './util/storage';
 import { Logger } from 'winston';
+import { Options } from 'options';
 
 export const create = (timezone: string, config: Config, options: Options, logger: Logger | typeof console): {
     constructFilename: (date: Date, type: string, hash: string, options?: { subject?: string }) => string;
