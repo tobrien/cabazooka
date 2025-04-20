@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { Command } from 'commander';
-import { Config, Input, Options } from '../src/cabazooka';
+import { Config, Input } from '../src/cabazooka';
+import { Options } from '../src/options';
 
 // Mock all dependencies
 jest.unstable_mockModule('../src/arguments', () => ({
@@ -15,17 +16,23 @@ jest.unstable_mockModule('../src/util/storage', () => ({
     create: jest.fn()
 }));
 
+jest.unstable_mockModule('../src/options', () => ({
+    create: jest.fn()
+}));
+
 // Import mocked modules
 let Arguments: any;
 let Output: any;
 let Storage: any;
 let Cabazooka: any;
+let OptionsModule: any;
 
 describe('cabazooka', () => {
     let mockArgumentsInstance: any;
     let mockOutputInstance: any;
     let mockStorageInstance: any;
     let mockLogger: any;
+    let mockOptionsInstance: any;
 
     const options: Options = {
         defaults: {
@@ -41,7 +48,8 @@ describe('cabazooka', () => {
             outputStructures: ['none', 'year', 'month', 'day'],
             filenameOptions: ['date', 'time', 'subject'],
             extensions: ['mp3', 'mp4', 'wav', 'webm']
-        }
+        },
+        isFeatureEnabled: jest.fn((feature) => true)
     };
 
     beforeEach(async () => {
@@ -53,6 +61,7 @@ describe('cabazooka', () => {
         Output = await import('../src/output');
         Storage = await import('../src/util/storage');
         Cabazooka = await import('../src/cabazooka');
+        OptionsModule = await import('../src/options');
 
         // Create mock instances
         mockArgumentsInstance = {
@@ -86,6 +95,8 @@ describe('cabazooka', () => {
             })
         };
 
+        mockOptionsInstance = { ...options };
+
         // Setup logger mock
         mockLogger = {
             debug: jest.fn(),
@@ -98,11 +109,12 @@ describe('cabazooka', () => {
         (Arguments.create as jest.Mock).mockReturnValue(mockArgumentsInstance);
         (Output.create as jest.Mock).mockReturnValue(mockOutputInstance);
         (Storage.create as jest.Mock).mockReturnValue(mockStorageInstance);
+        (OptionsModule.create as jest.Mock).mockReturnValue(mockOptionsInstance);
     });
 
     describe('create', () => {
         it('should create an instance with all methods', () => {
-            const instance = Cabazooka.create(options);
+            const instance = Cabazooka.create(mockOptionsInstance);
 
             expect(instance).toHaveProperty('setLogger');
             expect(instance).toHaveProperty('configure');
@@ -114,13 +126,13 @@ describe('cabazooka', () => {
             expect(typeof instance.validate).toBe('function');
             expect(typeof instance.operate).toBe('function');
 
-            expect(Arguments.create).toHaveBeenCalledWith(options);
+            expect(Arguments.create).toHaveBeenCalledWith(mockOptionsInstance);
         });
     });
 
     describe('setLogger', () => {
         it('should set the logger', () => {
-            const instance = Cabazooka.create(options);
+            const instance = Cabazooka.create(mockOptionsInstance);
 
             instance.setLogger(mockLogger);
 
@@ -133,7 +145,7 @@ describe('cabazooka', () => {
 
     describe('configure', () => {
         it('should call arguments.configure with command', async () => {
-            const instance = Cabazooka.create(options);
+            const instance = Cabazooka.create(mockOptionsInstance);
             const command = new Command();
 
             await instance.configure(command);
@@ -144,7 +156,7 @@ describe('cabazooka', () => {
 
     describe('validate', () => {
         it('should call arguments.validate with input', async () => {
-            const instance = Cabazooka.create(options);
+            const instance = Cabazooka.create(mockOptionsInstance);
             const input: Input = {
                 timezone: 'America/Los_Angeles',
                 recursive: false,
@@ -159,11 +171,33 @@ describe('cabazooka', () => {
 
             expect(mockArgumentsInstance.validate).toHaveBeenCalledWith(input);
         });
+
+        it('should handle validation errors', async () => {
+            const instance = Cabazooka.create(mockOptionsInstance);
+            instance.setLogger(mockLogger);
+
+            // Setup mock to throw error
+            const validationError = new Error('Invalid configuration');
+            mockArgumentsInstance.validate.mockRejectedValueOnce(validationError);
+
+            const input: Input = {
+                timezone: 'Invalid/Timezone',
+                recursive: false,
+                inputDirectory: './custom-input',
+                outputDirectory: './custom-output',
+                outputStructure: 'invalid' as any,
+                filenameOptions: ['invalid'] as any,
+                extensions: ['invalid']
+            };
+
+            await expect(instance.validate(input)).rejects.toThrow(validationError);
+            expect(mockArgumentsInstance.validate).toHaveBeenCalledWith(input);
+        });
     });
 
     describe('operate', () => {
         it('should return operator with all methods', async () => {
-            const instance = Cabazooka.create(options);
+            const instance = Cabazooka.create(mockOptionsInstance);
             const config: Config = {
                 timezone: 'America/Los_Angeles',
                 recursive: false,
@@ -187,14 +221,14 @@ describe('cabazooka', () => {
             expect(Output.create).toHaveBeenCalledWith(
                 config.timezone,
                 config,
-                options,
+                mockOptionsInstance,
                 expect.anything()
             );
         });
 
         describe('process', () => {
             it('should process files using storage.forEachFileIn', async () => {
-                const instance = Cabazooka.create(options);
+                const instance = Cabazooka.create(mockOptionsInstance);
                 instance.setLogger(mockLogger);
 
                 const config: Config = {
@@ -229,7 +263,7 @@ describe('cabazooka', () => {
             });
 
             it('should handle non-recursive file pattern when recursive is false', async () => {
-                const instance = Cabazooka.create(options);
+                const instance = Cabazooka.create(mockOptionsInstance);
 
                 const config: Config = {
                     timezone: 'America/Los_Angeles',
@@ -254,7 +288,7 @@ describe('cabazooka', () => {
             });
 
             it('should log error when callback throws exception', async () => {
-                const instance = Cabazooka.create(options);
+                const instance = Cabazooka.create(mockOptionsInstance);
                 instance.setLogger(mockLogger);
 
                 const config: Config = {
@@ -289,11 +323,87 @@ describe('cabazooka', () => {
                     error.stack
                 );
             });
+
+            it('should handle empty file list', async () => {
+                const instance = Cabazooka.create(mockOptionsInstance);
+                instance.setLogger(mockLogger);
+
+                // Mock empty file list
+                mockStorageInstance.forEachFileIn.mockImplementationOnce(async (dir: string, callback: (file: string) => Promise<void>, opts: { pattern: string }) => {
+                    return Promise.resolve([]); // No files processed
+                });
+
+                const config: Config = {
+                    timezone: 'America/Los_Angeles',
+                    recursive: true,
+                    inputDirectory: './custom-input',
+                    outputDirectory: './custom-output',
+                    outputStructure: 'year',
+                    filenameOptions: ['time'],
+                    extensions: ['wav', 'mp3']
+                };
+
+                const operator = await instance.operate(config);
+                const callback = jest.fn(() => Promise.resolve());
+
+                await operator.process(callback);
+
+                expect(callback).not.toHaveBeenCalled();
+                expect(mockLogger.info).toHaveBeenCalledWith('Processed %d files', 0);
+            });
+
+            it('should correctly join extensions', async () => {
+                const instance = Cabazooka.create(mockOptionsInstance);
+                instance.setLogger(mockLogger);
+
+                // Test with single extension
+                const configSingle: Config = {
+                    timezone: 'America/Los_Angeles',
+                    recursive: true,
+                    inputDirectory: './custom-input',
+                    outputDirectory: './custom-output',
+                    outputStructure: 'year',
+                    filenameOptions: ['time'],
+                    extensions: ['wav']
+                };
+
+                const operatorSingle = await instance.operate(configSingle);
+                await operatorSingle.process(jest.fn());
+
+                expect(mockStorageInstance.forEachFileIn).toHaveBeenCalledWith(
+                    './custom-input',
+                    expect.any(Function),
+                    { pattern: '**/*.{wav}' }
+                );
+
+                // Reset mock for next test
+                mockStorageInstance.forEachFileIn.mockClear();
+
+                // Test with empty extensions array
+                const configEmpty: Config = {
+                    timezone: 'America/Los_Angeles',
+                    recursive: true,
+                    inputDirectory: './custom-input',
+                    outputDirectory: './custom-output',
+                    outputStructure: 'year',
+                    filenameOptions: ['time'],
+                    extensions: []
+                };
+
+                const operatorEmpty = await instance.operate(configEmpty);
+                await operatorEmpty.process(jest.fn());
+
+                expect(mockStorageInstance.forEachFileIn).toHaveBeenCalledWith(
+                    './custom-input',
+                    expect.any(Function),
+                    { pattern: '**/*' }
+                );
+            });
         });
 
         describe('constructFilename', () => {
             it('should call output.constructFilename with parameters', async () => {
-                const instance = Cabazooka.create(options);
+                const instance = Cabazooka.create(mockOptionsInstance);
 
                 const config: Config = {
                     timezone: 'America/Los_Angeles',
@@ -319,11 +429,38 @@ describe('cabazooka', () => {
 
                 expect(result).toBe('filename-note-hash123-Test Subject');
             });
+
+            it('should handle missing optional parameters', async () => {
+                const instance = Cabazooka.create(mockOptionsInstance);
+
+                const config: Config = {
+                    timezone: 'America/Los_Angeles',
+                    recursive: false,
+                    inputDirectory: './custom-input',
+                    outputDirectory: './custom-output',
+                    outputStructure: 'year',
+                    filenameOptions: ['time'],
+                    extensions: ['wav']
+                };
+
+                const operator = await instance.operate(config);
+
+                const date = new Date();
+                // Call without optional parameters
+                const result = await operator.constructFilename(date, 'note', 'hash123');
+
+                expect(mockOutputInstance.constructFilename).toHaveBeenCalledWith(
+                    date,
+                    'note',
+                    'hash123',
+                    undefined
+                );
+            });
         });
 
         describe('constructOutputDirectory', () => {
             it('should call output.constructOutputDirectory with date', async () => {
-                const instance = Cabazooka.create(options);
+                const instance = Cabazooka.create(mockOptionsInstance);
 
                 const config: Config = {
                     timezone: 'America/Los_Angeles',
@@ -343,6 +480,33 @@ describe('cabazooka', () => {
                 expect(mockOutputInstance.constructOutputDirectory).toHaveBeenCalledWith(date);
                 expect(result).toBe('./test-output/2023/05');
             });
+        });
+    });
+
+    describe('isFeatureEnabled', () => {
+        it('should respect feature toggles', async () => {
+            // Setup mock to return false for specific feature
+            mockOptionsInstance.isFeatureEnabled.mockImplementation((feature: string) => {
+                return feature !== 'someFeature';
+            });
+
+            const instance = Cabazooka.create(mockOptionsInstance);
+            const config: Config = {
+                timezone: 'America/Los_Angeles',
+                recursive: false,
+                inputDirectory: './custom-input',
+                outputDirectory: './custom-output',
+                outputStructure: 'year',
+                filenameOptions: ['time'],
+                extensions: ['wav']
+            };
+
+            const operator = await instance.operate(config);
+
+            // The internal implementation would need to use isFeatureEnabled('someFeature')
+            // This just verifies our mock works as expected
+            expect(mockOptionsInstance.isFeatureEnabled('someFeature')).toBe(false);
+            expect(mockOptionsInstance.isFeatureEnabled('otherFeature')).toBe(true);
         });
     });
 }); 

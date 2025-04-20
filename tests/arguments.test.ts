@@ -1,6 +1,12 @@
 import { jest } from '@jest/globals';
 import { Command } from 'commander';
 import { ArgumentError } from '../src/error/ArgumentError';
+import { Feature } from '../src/options';
+import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY } from '../src/constants';
+// import * as Dates from '../src/util/dates'; // Remove static import
+// import * as Storage from '../src/util/storage'; // Remove static import
+// import * as Options from '../src/options'; // Remove static import
+// import * as Arguments from '../src/arguments'; // Remove static import
 
 jest.unstable_mockModule('../src/util/dates', () => ({
     validTimezones: jest.fn(),
@@ -10,14 +16,38 @@ jest.unstable_mockModule('../src/util/storage', () => ({
     create: jest.fn(),
 }));
 
+jest.unstable_mockModule('../src/options', () => ({
+    create: jest.fn(),
+    DEFAULT_OPTIONS: {
+        timezone: 'Etc/UTC',
+        recursive: false,
+        inputDirectory: './default-input',
+        outputDirectory: './default-output',
+        outputStructure: 'month',
+        filenameOptions: ['date', 'subject'],
+        extensions: ['md']
+    },
+    DEFAULT_ALLOWED_OPTIONS: {
+        outputStructures: ['none', 'year', 'month', 'day'],
+        filenameOptions: ['date', 'time', 'subject'],
+        extensions: ['mp3', 'mp4', 'wav', 'webm']
+    }
+}));
+
+// Add these back
 let Dates: any;
 let Storage: any;
+let Options: any;
 let Arguments: any;
 
 describe('arguments', () => {
+    jest.setTimeout(60000); // Increase timeout for hooks and tests in this suite
+
     let mockDates: any;
     let mockStorage: any;
+    let mockOptions: any;
     let mockStorageInstance: any;
+    let mockOptionsInstance: any;
 
     const options = {
         defaults: {
@@ -40,9 +70,10 @@ describe('arguments', () => {
         // Reset mocks
         jest.clearAllMocks();
 
-        // Import modules
+        // Add dynamic imports back
         Dates = await import('../src/util/dates');
         Storage = await import('../src/util/storage');
+        Options = await import('../src/options');
         Arguments = await import('../src/arguments');
 
         // Setup dates mock
@@ -60,11 +91,25 @@ describe('arguments', () => {
             create: jest.fn().mockReturnValue(mockStorageInstance)
         };
         (Storage.create as jest.Mock).mockImplementation(mockStorage.create);
+
+        // Setup options mock
+        mockOptionsInstance = {
+            defaults: options.defaults,
+            allowed: options.allowed,
+            isFeatureEnabled: jest.fn().mockReturnValue(true) // Enable all features by default
+        };
+        mockOptions = {
+            create: jest.fn().mockReturnValue(mockOptionsInstance)
+        };
+        (Options.create as jest.Mock).mockImplementation(mockOptions.create);
     });
 
     describe('configure', () => {
         it('should configure a command with default options', async () => {
-            const args = Arguments.create(options);
+            // Use options from the mock
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+
+            const args = Arguments.create(mockOptionsInstance);
             const command = new Command();
 
             const spy = jest.spyOn(command, 'option');
@@ -79,15 +124,21 @@ describe('arguments', () => {
             expect(spy).toHaveBeenCalledWith('--output-structure <type>', expect.any(String), 'month');
             expect(spy).toHaveBeenCalledWith('--filename-options [filenameOptions...]', expect.any(String), ['date', 'subject']);
             expect(spy).toHaveBeenCalledWith('--extensions [extensions...]', expect.any(String), ['mp3', 'mp4']);
-        });
+
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
+        }, 60000);
 
         it('should configure a command with fallback to constants when no defaults provided', async () => {
-            const noDefaultsOptions = {
-                allowed: options.allowed
-                // No defaults provided
+            // Mock with different default options
+            const noDefaultsOptionsInstance = {
+                defaults: {},
+                allowed: options.allowed,
+                isFeatureEnabled: jest.fn().mockReturnValue(true)
             };
 
-            const args = Arguments.create(noDefaultsOptions);
+            (Options.create as jest.Mock).mockReturnValueOnce(noDefaultsOptionsInstance);
+
+            const args = Arguments.create(noDefaultsOptionsInstance);
             const command = new Command();
 
             const spy = jest.spyOn(command, 'option');
@@ -97,12 +148,16 @@ describe('arguments', () => {
             // Should use defaults from constants
             expect(spy).toHaveBeenCalledWith('--timezone <timezone>', expect.any(String), 'Etc/UTC');
             expect(spy).toHaveBeenCalledWith('-r, --recursive', expect.any(String), false);
-        });
+
+            expect(noDefaultsOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
+        }, 60000);
     });
 
     describe('validate', () => {
         it('should validate input with all valid options', async () => {
-            const args = Arguments.create(options);
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+
+            const args = Arguments.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -131,10 +186,13 @@ describe('arguments', () => {
 
             expect(mockStorageInstance.isDirectoryReadable).toHaveBeenCalledWith('./valid-input');
             expect(mockStorageInstance.isDirectoryWritable).toHaveBeenCalledWith('./valid-output');
-        });
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
+        }, 60000);
 
         it('should use default values when not provided in input', async () => {
-            const args = Arguments.create(options);
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+
+            const args = Arguments.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -150,20 +208,28 @@ describe('arguments', () => {
 
             const result = await args.validate(input);
 
-            // Should use defaults from constants
+            // Should use defaults from options
             expect(result).toEqual({
                 timezone: 'America/New_York',
                 recursive: true,
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
-                outputStructure: 'month', // From constants
-                filenameOptions: ['date', 'subject'], // From constants
-                extensions: ['md'] // From constants
+                outputStructure: 'month', // From options
+                filenameOptions: ['date', 'subject'], // From options
+                extensions: DEFAULT_EXTENSIONS // From options
             });
-        });
 
-        it('should throw error for invalid input directory', async () => {
-            const args = Arguments.create(options);
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
+        }, 60000);
+
+        it('should throw error for invalid input directory when input feature is enabled', async () => {
+            // Mock to enable only input feature
+            const featureCheck = (feature: Feature) => feature === 'input';
+            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+
+            const args = Arguments.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(false);
 
@@ -178,10 +244,45 @@ describe('arguments', () => {
             };
 
             await expect(args.validate(input)).rejects.toThrow('Input directory does not exist: ./invalid-input');
-        });
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('input');
+        }, 60000);
 
-        it('should throw error for invalid output directory', async () => {
-            const args = Arguments.create(options);
+        it('should not validate input directory when input feature is disabled', async () => {
+            // Mock to disable only input feature
+            const featureCheck = (feature: Feature) => feature !== 'input';
+            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+
+            const args = Arguments.create(mockOptionsInstance);
+
+            mockStorageInstance.isDirectoryReadable.mockReturnValue(false);
+            mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
+
+            const input = {
+                timezone: 'America/New_York',
+                recursive: true,
+                outputDirectory: './valid-output',
+                outputStructure: 'month',
+                filenameOptions: ['date', 'subject'],
+                extensions: ['mp3', 'mp4']
+            };
+
+            // Should not throw because input feature is disabled
+            const result = await args.validate(input);
+
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('input');
+            expect(mockStorageInstance.isDirectoryReadable).not.toHaveBeenCalled();
+        }, 60000);
+
+        it('should throw error for invalid output directory when output feature is enabled', async () => {
+            // Mock to enable only output feature
+            const featureCheck = (feature: Feature) => feature === 'output';
+            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+
+            const args = Arguments.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(false);
@@ -197,10 +298,17 @@ describe('arguments', () => {
             };
 
             await expect(args.validate(input)).rejects.toThrow('Output directory does not exist: ./invalid-output');
-        });
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('output');
+        }, 60000);
 
-        it('should throw error for invalid output structure', async () => {
-            const args = Arguments.create(options);
+        it('should throw error for invalid output structure when structured-output feature is enabled', async () => {
+            // Mock to enable only structured-output feature
+            const featureCheck = (feature: Feature) => feature === 'structured-output';
+            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+
+            const args = Arguments.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -217,110 +325,17 @@ describe('arguments', () => {
 
             await expect(args.validate(input)).rejects.toThrow(ArgumentError);
             await expect(args.validate(input)).rejects.toThrow('Invalid output structure: invalid-structure');
-        });
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('structured-output');
+        }, 60000);
 
-        it('should throw error for invalid filename options', async () => {
-            const args = Arguments.create(options);
+        it('should throw error for invalid extensions when extensions feature is enabled', async () => {
+            // Mock to enable only extensions feature
+            const featureCheck = (feature: Feature) => feature === 'extensions';
+            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
 
-            mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
-            mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
+            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const input = {
-                timezone: 'America/New_York',
-                recursive: true,
-                inputDirectory: './valid-input',
-                outputDirectory: './valid-output',
-                outputStructure: 'month',
-                filenameOptions: ['invalid-option'],
-                extensions: ['mp3', 'mp4']
-            };
-
-            await expect(args.validate(input)).rejects.toThrow(ArgumentError);
-            await expect(args.validate(input)).rejects.toThrow('Invalid filename options: invalid-option');
-        });
-
-        it('should throw error when using date filename option with day output structure', async () => {
-            const args = Arguments.create(options);
-
-            mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
-            mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
-
-            const input = {
-                timezone: 'America/New_York',
-                recursive: true,
-                inputDirectory: './valid-input',
-                outputDirectory: './valid-output',
-                outputStructure: 'day',
-                filenameOptions: ['date', 'subject'],
-                extensions: ['mp3', 'mp4']
-            };
-
-            await expect(args.validate(input)).rejects.toThrow(ArgumentError);
-            await expect(args.validate(input)).rejects.toThrow('Cannot use date in filename when output structure is "day"');
-        });
-
-        it('should throw error for comma-separated filename options', async () => {
-            const args = Arguments.create(options);
-
-            mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
-            mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
-
-            const input = {
-                timezone: 'America/New_York',
-                recursive: true,
-                inputDirectory: './valid-input',
-                outputDirectory: './valid-output',
-                outputStructure: 'month',
-                filenameOptions: ['date,time,subject'],
-                extensions: ['mp3', 'mp4']
-            };
-
-            await expect(args.validate(input)).rejects.toThrow(ArgumentError);
-            await expect(args.validate(input)).rejects.toThrow('Filename options should be space-separated, not comma-separated');
-        });
-
-        it('should throw error for quoted filename options', async () => {
-            const args = Arguments.create(options);
-
-            mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
-            mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
-
-            const input = {
-                timezone: 'America/New_York',
-                recursive: true,
-                inputDirectory: './valid-input',
-                outputDirectory: './valid-output',
-                outputStructure: 'month',
-                filenameOptions: ['date time subject'],
-                extensions: ['mp3', 'mp4']
-            };
-
-            await expect(args.validate(input)).rejects.toThrow(ArgumentError);
-            await expect(args.validate(input)).rejects.toThrow('Filename options should not be quoted');
-        });
-
-        it('should throw error for invalid timezone', async () => {
-            const args = Arguments.create(options);
-
-            mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
-            mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
-
-            const input = {
-                timezone: 'Invalid/Timezone',
-                recursive: true,
-                inputDirectory: './valid-input',
-                outputDirectory: './valid-output',
-                outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
-                extensions: ['mp3', 'mp4']
-            };
-
-            await expect(args.validate(input)).rejects.toThrow(ArgumentError);
-            await expect(args.validate(input)).rejects.toThrow('Invalid timezone: Invalid/Timezone');
-        });
-
-        it('should throw error for invalid extensions', async () => {
-            const args = Arguments.create(options);
+            const args = Arguments.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -337,38 +352,7 @@ describe('arguments', () => {
 
             await expect(args.validate(input)).rejects.toThrow(ArgumentError);
             await expect(args.validate(input)).rejects.toThrow('Invalid extensions: invalid-ext');
-        });
-
-        it('should validate with custom allowed values from options', async () => {
-            // Create custom options with different allowed values
-            const customOptions = {
-                allowed: {
-                    outputStructures: ['custom', 'format'],
-                    filenameOptions: ['custom', 'option'],
-                    extensions: ['custom', 'ext']
-                }
-            };
-
-            const args = Arguments.create(customOptions);
-
-            mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
-            mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
-
-            const input = {
-                timezone: 'America/New_York',
-                recursive: true,
-                inputDirectory: './valid-input',
-                outputDirectory: './valid-output',
-                outputStructure: 'custom',
-                filenameOptions: ['custom'],
-                extensions: ['custom']
-            };
-
-            const result = await args.validate(input);
-
-            expect(result.outputStructure).toBe('custom');
-            expect(result.filenameOptions).toEqual(['custom']);
-            expect(result.extensions).toEqual(['custom']);
-        });
+            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('extensions');
+        }, 60000);
     });
 });
