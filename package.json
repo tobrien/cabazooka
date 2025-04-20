@@ -1,6 +1,6 @@
 {
     "name": "@tobrien/cabazooka",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "cabazooka doesn't help you think. It removes what gets in the way.",
     "main": "dist/cabazooka.js",
     "type": "module",
