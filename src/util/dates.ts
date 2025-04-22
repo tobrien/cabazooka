@@ -27,8 +27,10 @@ dayjs.extend(timezone);
  */
 export interface Utility {
     now: () => Date;
+    today: () => string;
     date: (date: string | number | Date | null | undefined) => Date;
     parse: (date: string | number | Date | null | undefined, format: string) => Date;
+    isValidDate: (date: string, format: string) => boolean;
     addDays: (date: Date, days: number) => Date;
     addMonths: (date: Date, months: number) => Date;
     addYears: (date: Date, years: number) => Date;
@@ -47,7 +49,12 @@ export interface Utility {
 export const create = (parameters: { timezone: string }) => {
     const { timezone } = parameters;
     const now = () => {
-        return date(undefined);
+        return dayjs().tz(timezone).toDate();
+    }
+
+    const today = () => {
+        // Return today's date formatted as YYYY-M-D in the specified timezone
+        return dayjs().tz(timezone).format('YYYY-M-D');
     }
 
     const date = (date: string | number | Date | null | undefined) => {
@@ -72,6 +79,10 @@ export const create = (parameters: { timezone: string }) => {
         }
 
         return value.toDate();
+    }
+
+    const isValidDate = (date: string, format: string): boolean => {
+        return dayjs(date, format, true).isValid(); // Use strict parsing
     }
 
     const addDays = (date: Date, days: number) => {
@@ -126,7 +137,7 @@ export const create = (parameters: { timezone: string }) => {
         return dayjs.tz(date, timezone).isAfter(dayjs.tz(other, timezone));
     }
 
-    return { now, date, parse, addDays, addMonths, addYears, format, subDays, subMonths, subYears, startOfMonth, endOfMonth, startOfYear, endOfYear, isBefore, isAfter };
+    return { now, today, date, parse, isValidDate, addDays, addMonths, addYears, format, subDays, subMonths, subYears, startOfMonth, endOfMonth, startOfYear, endOfYear, isBefore, isAfter };
 }
 
 export const validTimezones = () => {
