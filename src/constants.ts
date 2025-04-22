@@ -1,4 +1,3 @@
-
 import { FilenameOption, OutputStructure } from 'options';
 
 export const VERSION = '__VERSION__ (__GIT_BRANCH__/__GIT_COMMIT__ __GIT_TAGS__ __GIT_COMMIT_DATE__) __SYSTEM_INFO__';
@@ -28,10 +27,10 @@ export const DEFAULT_INPUT_DIRECTORY = './';
 export const DEFAULT_OUTPUT_DIRECTORY = './';
 
 export const DEFAULT_OUTPUT_STRUCTURE = 'month' as OutputStructure;
-export const DEFAULT_FILENAME_OPTIONS = ['date', 'subject'] as FilenameOption[];
+export const DEFAULT_OUTPUT_FILENAME_OPTIONS = ['date', 'subject'] as FilenameOption[];
 export const DEFAULT_EXTENSIONS = ['md'] as string[];
 
 export const ALLOWED_OUTPUT_STRUCTURES = ['none', 'year', 'month', 'day'] as OutputStructure[];
-export const ALLOWED_FILENAME_OPTIONS = ['date', 'time', 'subject'] as FilenameOption[];
+export const ALLOWED_OUTPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as FilenameOption[];
 
 export const ALLOWED_EXTENSIONS = ['md'] as string[];

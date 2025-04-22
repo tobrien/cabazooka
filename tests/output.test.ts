@@ -22,7 +22,7 @@ describe('output', () => {
     const mockConfig = {
         outputDirectory: '/test/output',
         outputStructure: 'year',
-        filenameOptions: ['date', 'time']
+        outputFilenameOptions: ['date', 'time']
     };
 
     const mockOptions = {};
@@ -91,7 +91,7 @@ describe('output', () => {
             // Create output instance without date/time options
             const configWithoutOptions = {
                 ...mockConfig,
-                filenameOptions: []
+                outputFilenameOptions: []
             };
 
             const outputWithoutOptions = Output.create(
@@ -171,7 +171,7 @@ describe('output', () => {
             // Create output instance with only date option
             const configWithDateOnly = {
                 ...mockConfig,
-                filenameOptions: ['date']
+                outputFilenameOptions: ['date']
             };
 
             const outputWithDateOnly = Output.create(
@@ -199,7 +199,7 @@ describe('output', () => {
             // Create output instance with only time option
             const configWithTimeOnly = {
                 ...mockConfig,
-                filenameOptions: ['time']
+                outputFilenameOptions: ['time']
             };
 
             const outputWithTimeOnly = Output.create(
@@ -324,7 +324,7 @@ describe('output', () => {
             const configWithDay = {
                 ...mockConfig,
                 outputStructure: 'day',
-                filenameOptions: ['date']
+                outputFilenameOptions: ['date']
             };
 
             const outputWithDay = Output.create(
@@ -348,7 +348,7 @@ describe('output', () => {
             const configWithNone = {
                 ...mockConfig,
                 outputStructure: 'none',
-                filenameOptions: ['date']
+                outputFilenameOptions: ['date']
             };
 
             const outputWithNone = Output.create(
@@ -377,7 +377,7 @@ describe('output', () => {
             const configWithYear = {
                 ...mockConfig,
                 outputStructure: 'year',
-                filenameOptions: ['date']
+                outputFilenameOptions: ['date']
             };
 
             const outputWithYear = Output.create(
@@ -406,7 +406,7 @@ describe('output', () => {
             const configWithMonth = {
                 ...mockConfig,
                 outputStructure: 'month',
-                filenameOptions: ['date']
+                outputFilenameOptions: ['date']
             };
 
             const outputWithMonth = Output.create(

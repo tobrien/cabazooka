@@ -1,10 +1,10 @@
 import { Command } from "commander";
 import {
     ALLOWED_EXTENSIONS,
-    ALLOWED_FILENAME_OPTIONS,
+    ALLOWED_OUTPUT_FILENAME_OPTIONS,
     ALLOWED_OUTPUT_STRUCTURES,
     DEFAULT_EXTENSIONS,
-    DEFAULT_FILENAME_OPTIONS,
+    DEFAULT_OUTPUT_FILENAME_OPTIONS,
     DEFAULT_INPUT_DIRECTORY,
     DEFAULT_OUTPUT_DIRECTORY,
     DEFAULT_OUTPUT_STRUCTURE,
@@ -37,7 +37,7 @@ export const create = (options: Options): {
         }
         if (options.isFeatureEnabled('structured-output')) {
             retCommand = retCommand.option('--output-structure <type>', 'output directory structure (none/year/month/day)', options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE)
-            retCommand = retCommand.option('--filename-options [filenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.defaults?.filenameOptions || DEFAULT_FILENAME_OPTIONS)
+            retCommand = retCommand.option('--output-filename-options [outputFilenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS)
         }
         if (options.isFeatureEnabled('extensions')) {
             retCommand = retCommand.option('--extensions [extensions...]', 'file extensions to process (space-separated list of: mp3,mp4,mpeg,mpga,m4a,wav,webm)', options.defaults?.extensions || DEFAULT_EXTENSIONS);
@@ -68,9 +68,9 @@ export const create = (options: Options): {
         if (options.isFeatureEnabled('structured-output')) {
             // Validate filename options if provided
             validateOutputStructure(input.outputStructure);
-            validateFilenameOptions(input.filenameOptions, input.outputStructure as OutputStructure);
+            validateOutputFilenameOptions(input.outputFilenameOptions, input.outputStructure as OutputStructure);
             config.outputStructure = (input.outputStructure ?? DEFAULT_OUTPUT_STRUCTURE) as OutputStructure;
-            config.filenameOptions = (input.filenameOptions ?? DEFAULT_FILENAME_OPTIONS) as FilenameOption[];
+            config.outputFilenameOptions = (input.outputFilenameOptions ?? DEFAULT_OUTPUT_FILENAME_OPTIONS) as FilenameOption[];
         }
 
         if (options.isFeatureEnabled('extensions')) {
@@ -103,27 +103,27 @@ export const create = (options: Options): {
         }
     }
 
-    const validateFilenameOptions = (filenameOptions: string[] | undefined, outputStructure: OutputStructure | undefined): void => {
-        if (filenameOptions) {
+    const validateOutputFilenameOptions = (outputFilenameOptions: string[] | undefined, outputStructure: OutputStructure | undefined): void => {
+        if (outputFilenameOptions) {
             // Check if first argument contains commas - likely a comma-separated list
-            if (filenameOptions[0].includes(',')) {
-                throw new ArgumentError('--filename-options', 'Filename options should be space-separated, not comma-separated. Example: --filename-options date time subject');
+            if (outputFilenameOptions[0].includes(',')) {
+                throw new ArgumentError('--output-filename-options', 'Filename options should be space-separated, not comma-separated. Example: --output-filename-options date time subject');
             }
 
             // Check if first argument looks like a quoted string containing multiple options
-            if (filenameOptions.length === 1 && filenameOptions[0].split(' ').length > 1) {
-                throw new ArgumentError('--filename-options', 'Filename options should not be quoted. Use: --filename-options date time subject instead of --filename-options "date time subject"');
+            if (outputFilenameOptions.length === 1 && outputFilenameOptions[0].split(' ').length > 1) {
+                throw new ArgumentError('--output-filename-options', 'Filename options should not be quoted. Use: --output-filename-options date time subject instead of --output-filename-options "date time subject"');
             }
-            const validOptions = options.allowed?.filenameOptions || ALLOWED_FILENAME_OPTIONS;
-            const invalidOptions = filenameOptions.filter(opt => !validOptions.includes(opt as FilenameOption));
+            const validOptions = options.allowed?.outputFilenameOptions || ALLOWED_OUTPUT_FILENAME_OPTIONS;
+            const invalidOptions = outputFilenameOptions.filter(opt => !validOptions.includes(opt as FilenameOption));
             if (invalidOptions.length > 0) {
-                throw new ArgumentError('--filename-options', `Invalid filename options: ${invalidOptions.join(', ')}. Valid options are: ${validOptions.join(', ')}`);
+                throw new ArgumentError('--output-filename-options', `Invalid filename options: ${invalidOptions.join(', ')}. Valid options are: ${validOptions.join(', ')}`);
             }
 
             // Validate date option against output structure
-            if (filenameOptions.includes('date')) {
+            if (outputFilenameOptions.includes('date')) {
                 if (outputStructure && outputStructure === 'day') {
-                    throw new ArgumentError('--filename-options', 'Cannot use date in filename when output structure is "day"');
+                    throw new ArgumentError('--output-filename-options', 'Cannot use date in filename when output structure is "day"');
                 }
             }
         }

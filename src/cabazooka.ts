@@ -1,4 +1,3 @@
-
 import { Command } from 'commander';
 import { Logger } from "winston";
 import * as Arguments from './arguments';
@@ -28,7 +27,7 @@ export interface Input {
     outputDirectory: string;
     extensions: string[];
     outputStructure?: string;
-    filenameOptions?: string[];
+    outputFilenameOptions?: string[];
 }
 
 export interface Config {
@@ -37,7 +36,7 @@ export interface Config {
     inputDirectory: string;
     outputDirectory: string;
     outputStructure: Options.OutputStructure;
-    filenameOptions: Options.FilenameOption[];
+    outputFilenameOptions: Options.FilenameOption[];
     extensions: string[];
 }
 

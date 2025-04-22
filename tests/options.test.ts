@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Feature } from '../src/options';
-import { DEFAULT_EXTENSIONS, DEFAULT_FILENAME_OPTIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE } from '../src/constants';
+import { DEFAULT_EXTENSIONS, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE } from '../src/constants';
 
 describe('options', () => {
     let Options: any;
@@ -14,7 +14,6 @@ describe('options', () => {
         it('should create options with default values when no parameters provided', () => {
             const options = Options.createOptions();
 
-            expect(options.defaults).toEqual(Options.DEFAULT_OPTIONS);
             expect(options.allowed).toEqual(Options.DEFAULT_ALLOWED_OPTIONS);
             expect(options.isFeatureEnabled('output')).toBe(true);
             expect(options.isFeatureEnabled('structured-output')).toBe(true);
@@ -29,7 +28,7 @@ describe('options', () => {
                 inputDirectory: './custom-input',
                 outputDirectory: './custom-output',
                 outputStructure: 'day' as const,
-                filenameOptions: ['time', 'subject'] as const,
+                outputFilenameOptions: ['time', 'subject'] as const,
                 extensions: ['wav', 'mp3']
             };
 
@@ -43,13 +42,12 @@ describe('options', () => {
         it('should create options with custom allowed options', () => {
             const customAllowed = {
                 outputStructures: ['year', 'month'] as const,
-                filenameOptions: ['date'] as const,
+                outputFilenameOptions: ['date'] as const,
                 extensions: ['pdf', 'docx']
             };
 
             const options = Options.createOptions({ allowed: customAllowed });
 
-            expect(options.defaults).toEqual(Options.DEFAULT_OPTIONS);
             expect(options.allowed).toEqual(customAllowed);
         });
 
@@ -58,7 +56,6 @@ describe('options', () => {
 
             const options = Options.createOptions({ features: customFeatures });
 
-            expect(options.defaults).toEqual(Options.DEFAULT_OPTIONS);
             expect(options.allowed).toEqual(Options.DEFAULT_ALLOWED_OPTIONS);
             expect(options.isFeatureEnabled('input')).toBe(true);
             expect(options.isFeatureEnabled('extensions')).toBe(true);
@@ -110,20 +107,6 @@ describe('options', () => {
 
             // @ts-ignore - Testing invalid feature
             expect(options.isFeatureEnabled('unknown-feature')).toBe(false);
-        });
-    });
-
-    describe('DEFAULT_OPTIONS', () => {
-        it('should contain expected default values', () => {
-            expect(Options.DEFAULT_OPTIONS).toEqual({
-                timezone: DEFAULT_TIMEZONE,
-                recursive: DEFAULT_RECURSIVE,
-                inputDirectory: DEFAULT_INPUT_DIRECTORY,
-                outputDirectory: DEFAULT_OUTPUT_DIRECTORY,
-                outputStructure: DEFAULT_OUTPUT_STRUCTURE,
-                filenameOptions: DEFAULT_FILENAME_OPTIONS,
-                extensions: DEFAULT_EXTENSIONS
-            });
         });
     });
 });

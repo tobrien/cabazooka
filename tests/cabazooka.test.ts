@@ -2,6 +2,14 @@ import { jest } from '@jest/globals';
 import { Command } from 'commander';
 import { Config, Input } from '../src/cabazooka';
 import { Options } from '../src/options';
+import {
+    DEFAULT_EXTENSIONS,
+    DEFAULT_OUTPUT_FILENAME_OPTIONS,
+    DEFAULT_OUTPUT_STRUCTURE,
+    DEFAULT_RECURSIVE,
+    DEFAULT_INPUT_DIRECTORY,
+    DEFAULT_OUTPUT_DIRECTORY
+} from "../src/constants"; // Import needed defaults
 
 // Mock all dependencies
 jest.unstable_mockModule('../src/arguments', () => ({
@@ -41,12 +49,12 @@ describe('cabazooka', () => {
             inputDirectory: './test-input',
             outputDirectory: './test-output',
             outputStructure: 'month',
-            filenameOptions: ['date', 'subject'],
+            outputFilenameOptions: ['date', 'subject'],
             extensions: ['mp3', 'mp4']
         },
         allowed: {
             outputStructures: ['none', 'year', 'month', 'day'],
-            filenameOptions: ['date', 'time', 'subject'],
+            outputFilenameOptions: ['date', 'time', 'subject'],
             extensions: ['mp3', 'mp4', 'wav', 'webm']
         },
         isFeatureEnabled: jest.fn((feature) => true)
@@ -72,7 +80,7 @@ describe('cabazooka', () => {
                 inputDirectory: input.inputDirectory || './test-input',
                 outputDirectory: input.outputDirectory || './test-output',
                 outputStructure: (input.outputStructure || 'month') as any,
-                filenameOptions: (input.filenameOptions || ['date', 'subject']) as any,
+                outputFilenameOptions: (input.outputFilenameOptions || ['date', 'subject']) as any,
                 extensions: input.extensions || ['mp3', 'mp4']
             }))
         };
@@ -163,7 +171,7 @@ describe('cabazooka', () => {
                 inputDirectory: './custom-input',
                 outputDirectory: './custom-output',
                 outputStructure: 'year',
-                filenameOptions: ['time'],
+                outputFilenameOptions: ['time'],
                 extensions: ['wav']
             };
 
@@ -186,12 +194,37 @@ describe('cabazooka', () => {
                 inputDirectory: './custom-input',
                 outputDirectory: './custom-output',
                 outputStructure: 'invalid' as any,
-                filenameOptions: ['invalid'] as any,
+                outputFilenameOptions: ['invalid'] as any,
                 extensions: ['invalid']
             };
 
             await expect(instance.validate(input)).rejects.toThrow(validationError);
             expect(mockArgumentsInstance.validate).toHaveBeenCalledWith(input);
+        });
+
+        it('should use defaults from constants if createOptions is not called', async () => {
+            const input: Partial<Input> = {
+                timezone: 'America/New_York'
+            };
+
+            const expectedValidatedConfig: Config = {
+                inputDirectory: DEFAULT_INPUT_DIRECTORY,
+                outputDirectory: DEFAULT_OUTPUT_DIRECTORY,
+                recursive: DEFAULT_RECURSIVE,
+                outputStructure: DEFAULT_OUTPUT_STRUCTURE,
+                outputFilenameOptions: DEFAULT_OUTPUT_FILENAME_OPTIONS,
+                extensions: DEFAULT_EXTENSIONS,
+                timezone: 'America/New_York'
+            };
+
+            // Ensure the mock function is correctly typed to return Promise<Config>
+            mockArgumentsInstance.validate.mockResolvedValue(expectedValidatedConfig);
+
+            const instance = Cabazooka.create(mockOptionsInstance);
+            const resultingConfig = await instance.validate(input as Input);
+
+            expect(mockArgumentsInstance.validate).toHaveBeenCalledWith(input as Input);
+            expect(resultingConfig).toEqual(expectedValidatedConfig);
         });
     });
 
@@ -204,7 +237,7 @@ describe('cabazooka', () => {
                 inputDirectory: './custom-input',
                 outputDirectory: './custom-output',
                 outputStructure: 'year',
-                filenameOptions: ['time'],
+                outputFilenameOptions: ['time'],
                 extensions: ['wav']
             };
 
@@ -237,7 +270,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav', 'mp3']
                 };
 
@@ -271,7 +304,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav', 'mp3']
                 };
 
@@ -297,7 +330,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav', 'mp3']
                 };
 
@@ -339,7 +372,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav', 'mp3']
                 };
 
@@ -363,7 +396,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav']
                 };
 
@@ -386,7 +419,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: []
                 };
 
@@ -411,7 +444,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav']
                 };
 
@@ -439,7 +472,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav']
                 };
 
@@ -468,7 +501,7 @@ describe('cabazooka', () => {
                     inputDirectory: './custom-input',
                     outputDirectory: './custom-output',
                     outputStructure: 'year',
-                    filenameOptions: ['time'],
+                    outputFilenameOptions: ['time'],
                     extensions: ['wav']
                 };
 
@@ -497,7 +530,7 @@ describe('cabazooka', () => {
                 inputDirectory: './custom-input',
                 outputDirectory: './custom-output',
                 outputStructure: 'year',
-                filenameOptions: ['time'],
+                outputFilenameOptions: ['time'],
                 extensions: ['wav']
             };
 

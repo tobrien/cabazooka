@@ -2,11 +2,12 @@ import { jest } from '@jest/globals';
 import { Command } from 'commander';
 import { ArgumentError } from '../src/error/ArgumentError';
 import { Feature } from '../src/options';
-import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY } from '../src/constants';
+import { DEFAULT_EXTENSIONS, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE, DEFAULT_INPUT_DIRECTORY, DEFAULT_OUTPUT_DIRECTORY, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES } from '../src/constants';
 // import * as Dates from '../src/util/dates'; // Remove static import
 // import * as Storage from '../src/util/storage'; // Remove static import
 // import * as Options from '../src/options'; // Remove static import
-// import * as Arguments from '../src/arguments'; // Remove static import
+import { Config, Input } from "../src/cabazooka";
+import { createOptions, Options, FilenameOption, OutputStructure } from "../src/options";
 
 jest.unstable_mockModule('../src/util/dates', () => ({
     validTimezones: jest.fn(),
@@ -24,12 +25,12 @@ jest.unstable_mockModule('../src/options', () => ({
         inputDirectory: './default-input',
         outputDirectory: './default-output',
         outputStructure: 'month',
-        filenameOptions: ['date', 'subject'],
+        outputFilenameOptions: ['date', 'subject'],
         extensions: ['md']
     },
     DEFAULT_ALLOWED_OPTIONS: {
         outputStructures: ['none', 'year', 'month', 'day'],
-        filenameOptions: ['date', 'time', 'subject'],
+        outputFilenameOptions: ['date', 'time', 'subject'],
         extensions: ['mp3', 'mp4', 'wav', 'webm']
     }
 }));
@@ -56,12 +57,12 @@ describe('arguments', () => {
             inputDirectory: './test-input',
             outputDirectory: './test-output',
             outputStructure: 'month',
-            filenameOptions: ['date', 'subject'],
+            outputFilenameOptions: ['date', 'subject'],
             extensions: ['mp3', 'mp4']
         },
         allowed: {
             outputStructures: ['none', 'year', 'month', 'day'],
-            filenameOptions: ['date', 'time', 'subject'],
+            outputFilenameOptions: ['date', 'time', 'subject'],
             extensions: ['mp3', 'mp4', 'wav', 'webm']
         }
     };
@@ -122,7 +123,7 @@ describe('arguments', () => {
             expect(spy).toHaveBeenCalledWith('-o, --output-directory <outputDirectory>', expect.any(String), './test-output');
             expect(spy).toHaveBeenCalledWith('-i, --input-directory <inputDirectory>', expect.any(String), './test-input');
             expect(spy).toHaveBeenCalledWith('--output-structure <type>', expect.any(String), 'month');
-            expect(spy).toHaveBeenCalledWith('--filename-options [filenameOptions...]', expect.any(String), ['date', 'subject']);
+            expect(spy).toHaveBeenCalledWith('--output-filename-options [outputFilenameOptions...]', expect.any(String), ['date', 'subject']);
             expect(spy).toHaveBeenCalledWith('--extensions [extensions...]', expect.any(String), ['mp3', 'mp4']);
 
             expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
@@ -168,7 +169,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -180,7 +181,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             });
 
@@ -203,7 +204,7 @@ describe('arguments', () => {
                 recursive: true,
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
-                // outputStructure, filenameOptions, extensions missing
+                // outputStructure, outputFilenameOptions, extensions missing
             };
 
             const result = await args.validate(input);
@@ -215,7 +216,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month', // From options
-                filenameOptions: ['date', 'subject'], // From options
+                outputFilenameOptions: ['date', 'subject'], // From options
                 extensions: DEFAULT_EXTENSIONS // From options
             });
 
@@ -239,7 +240,7 @@ describe('arguments', () => {
                 inputDirectory: './invalid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -264,7 +265,7 @@ describe('arguments', () => {
                 recursive: true,
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -293,7 +294,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './invalid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -319,7 +320,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'invalid-structure',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -346,7 +347,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['invalid-ext']
             };
 

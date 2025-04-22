@@ -12,7 +12,7 @@ export const create = (timezone: string, config: Config, options: Options, logge
 } => {
     const dates = Dates.create({ timezone });
     const storage: Storage.Utility = Storage.create({ log: logger.debug });
-    const { outputDirectory, outputStructure, filenameOptions } = config;
+    const { outputDirectory, outputStructure, outputFilenameOptions } = config;
 
     function formatDate(date: Date, outputStructure: 'none' | 'year' | 'month' | 'day'): string {
         switch (outputStructure) {
@@ -49,13 +49,13 @@ export const create = (timezone: string, config: Config, options: Options, logge
         const parts: string[] = [];
 
         // Add date if requested
-        if (filenameOptions?.includes('date')) {
+        if (outputFilenameOptions?.includes('date')) {
             const dateStr = formatDate(date, outputStructure);
             parts.push(dateStr);
         }
 
         // Add time if requested
-        if (filenameOptions?.includes('time')) {
+        if (outputFilenameOptions?.includes('time')) {
             const dates = Dates.create({ timezone });
             const timeStr = dates.format(date, 'HHmm');
             parts.push(timeStr);
