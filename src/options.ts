@@ -1,20 +1,20 @@
-import { ALLOWED_EXTENSIONS, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES, DEFAULT_EXTENSIONS, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE } from "./constants";
+import { ALLOWED_EXTENSIONS, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES, DEFAULT_EXTENSIONS, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, ALLOWED_INPUT_FILENAME_OPTIONS, ALLOWED_INPUT_STRUCTURES } from "./constants";
 import { Config } from "./cabazooka";
 
 export type Feature = 'input' | 'output' | 'structured-output' | 'structured-input' | 'extensions';
 
 export type FilenameOption = 'date' | 'time' | 'subject';
-export type OutputStructure = 'none' | 'year' | 'month' | 'day';
+export type FilesystemStructure = 'none' | 'year' | 'month' | 'day';
 
 
 export interface DefaultOptions {
     timezone?: string;
     recursive?: boolean;
     inputDirectory?: string;
-    inputStructure?: OutputStructure;
+    inputStructure?: FilesystemStructure;
     inputFilenameOptions?: FilenameOption[];
     outputDirectory?: string;
-    outputStructure?: OutputStructure;
+    outputStructure?: FilesystemStructure;
     outputFilenameOptions?: FilenameOption[];
     extensions?: string[];
     startDate?: string;
@@ -22,7 +22,9 @@ export interface DefaultOptions {
 }
 
 export interface AllowedOptions {
-    outputStructures?: OutputStructure[];
+    inputStructures?: FilesystemStructure[];
+    inputFilenameOptions?: FilenameOption[];
+    outputStructures?: FilesystemStructure[];
     outputFilenameOptions?: FilenameOption[];
     extensions?: string[];
 }
@@ -37,6 +39,8 @@ export const DEFAULT_APP_OPTIONS: DefaultOptions = {
     timezone: DEFAULT_TIMEZONE,
     recursive: DEFAULT_RECURSIVE,
     inputDirectory: DEFAULT_INPUT_DIRECTORY,
+    inputStructure: DEFAULT_INPUT_STRUCTURE,
+    inputFilenameOptions: DEFAULT_INPUT_FILENAME_OPTIONS,
     outputDirectory: DEFAULT_OUTPUT_DIRECTORY,
     outputStructure: DEFAULT_OUTPUT_STRUCTURE,
     outputFilenameOptions: DEFAULT_OUTPUT_FILENAME_OPTIONS,
@@ -44,6 +48,8 @@ export const DEFAULT_APP_OPTIONS: DefaultOptions = {
 }
 
 export const DEFAULT_ALLOWED_OPTIONS: AllowedOptions = {
+    inputStructures: ALLOWED_INPUT_STRUCTURES,
+    inputFilenameOptions: ALLOWED_INPUT_FILENAME_OPTIONS,
     outputStructures: ALLOWED_OUTPUT_STRUCTURES,
     outputFilenameOptions: ALLOWED_OUTPUT_FILENAME_OPTIONS,
     extensions: ALLOWED_EXTENSIONS,

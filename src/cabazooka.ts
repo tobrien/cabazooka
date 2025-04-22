@@ -3,11 +3,11 @@ import { Logger } from "winston";
 import * as Arguments from './arguments';
 import { ArgumentError } from './error/ArgumentError';
 import * as Output from './output';
+import * as Input from './input';
 import * as Storage from './util/storage';
 import * as Options from './options';
 import * as Constants from "./constants";
-import * as Dates from './util/dates';
-import { FilenameOption, OutputStructure } from "./options";
+import { FilenameOption, FilesystemStructure } from "./options";
 import { Options as CabazookaOptions } from "./options";
 
 export * from './options';
@@ -15,7 +15,7 @@ export * from './options';
 export interface Cabazooka {
     configure: (command: Command) => Promise<Command>;
     setLogger: (logger: Logger) => void;
-    validate: (input: Input) => Promise<Config>;
+    validate: (args: Args) => Promise<Config>;
     operate: (config: Config) => Promise<Operator>;
 }
 
@@ -25,32 +25,36 @@ export interface Operator {
     constructOutputDirectory: (createDate: Date) => Promise<string>;
 }
 
-export interface Input {
+export interface Args {
     recursive: boolean;
     timezone: string;
     inputDirectory: string;
-    inputStructure?: string;
-    inputFilenameOptions?: string[];
+    inputStructure?: FilesystemStructure;
+    inputFilenameOptions?: FilenameOption[];
     outputDirectory: string;
-    outputStructure?: string;
-    outputFilenameOptions?: string[];
+    outputStructure?: FilesystemStructure;
+    outputFilenameOptions?: FilenameOption[];
     extensions: string[];
-    start?: string;
-    end?: string;
+    start?: string; // Start date string
+    end?: string;   // End date string
+}
+
+export interface DateRange {
+    start: Date;
+    end: Date;
 }
 
 export interface Config {
     timezone: string;
     inputDirectory?: string;
-    inputStructure?: OutputStructure;
+    inputStructure?: FilesystemStructure;
     inputFilenameOptions?: FilenameOption[];
     recursive?: boolean;
     outputDirectory?: string;
-    outputStructure?: OutputStructure;
+    outputStructure?: FilesystemStructure;
     outputFilenameOptions?: FilenameOption[];
     extensions?: string[];
-    startDate?: Date; // YYYY-M-D string parsed to Date
-    endDate?: Date; // YYYY-M-D string parsed to Date
+    dateRange?: DateRange; // Replaced startDate and endDate
 }
 
 export type FileData = object;
@@ -70,44 +74,20 @@ export const create = (options: CabazookaOptions): Cabazooka => {
         return argumentsInstance.configure(command);
     }
 
-    const validate = (input: Input): Promise<Config> => {
-        logger.debug('Validating Input: %j\n\n', input);
-        return argumentsInstance.validate(input);
+    const validate = (args: Args): Promise<Config> => {
+        logger.debug('Validating Input: %j\n\n', args);
+        return argumentsInstance.validate(args);
     }
 
     const operate = async (config: Config): Promise<Operator> => {
         const output = Output.create(config.timezone, config, options, logger);
+        const input = Input.create(config, options, logger);
 
         const process = async (callback: (file: string) => Promise<void>) => {
-
             if (!options.isFeatureEnabled('input')) {
                 throw new Error('Input feature is not enabled, skipping input processing');
             }
-
-            // Look through all files in the input directory
-            const inputDirectory = config.inputDirectory;
-
-            const storage: Storage.Utility = Storage.create({ log: logger.debug });
-
-            let filePattern = `${config.recursive ? '**/' : ''}*`;
-            if (options.isFeatureEnabled('extensions') && config.extensions && config.extensions.length > 0) {
-                filePattern += `.{${config.extensions!.join(',')}}`;
-            }
-
-            logger.info('Processing files in %s with pattern %s', inputDirectory, filePattern);
-            let fileCount = 0;
-            await storage.forEachFileIn(inputDirectory!, async (file: string) => {
-                try {
-                    logger.debug('Processing file %s', file);
-                    await callback(file);
-                    fileCount++;
-                } catch (error) {
-                    logger.error('Error processing file %s: %s\n\n%s\n\n', file, error, (error as Error).stack);
-                }
-            }, { pattern: filePattern });
-
-            logger.info('Processed %d files', fileCount);
-
+            return input.process(callback);
         }
 
         const constructFilename = async (createDate: Date, type: string, hash: string, context?: { subject?: string }): Promise<string> => {
@@ -158,10 +138,10 @@ const run = async (args: string[]): Promise<void> => {
     await argumentHandler.configure(command);
 
     command.parse(args);
-    const input: Input = command.opts();
+    const argumentInput: Args = command.opts();
 
     try {
-        const config = await argumentHandler.validate(input);
+        const config = await argumentHandler.validate(argumentInput);
         logger.log('Configuration validated:', config);
 
         // Process files
