@@ -2,15 +2,12 @@ import { jest } from '@jest/globals';
 import { Command } from 'commander';
 import { ArgumentError } from '../src/error/ArgumentError';
 import { Feature } from '../src/options';
-import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY } from '../src/constants';
+import { DEFAULT_EXTENSIONS, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE, DEFAULT_INPUT_DIRECTORY, DEFAULT_OUTPUT_DIRECTORY, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES } from '../src/constants';
 // import * as Dates from '../src/util/dates'; // Remove static import
 // import * as Storage from '../src/util/storage'; // Remove static import
 // import * as Options from '../src/options'; // Remove static import
-// import * as Arguments from '../src/arguments'; // Remove static import
-
-jest.unstable_mockModule('../src/util/dates', () => ({
-    validTimezones: jest.fn(),
-}));
+import { Config, Input } from "../src/cabazooka";
+import { createOptions, Options, FilenameOption, OutputStructure } from "../src/options";
 
 jest.unstable_mockModule('../src/util/storage', () => ({
     create: jest.fn(),
@@ -24,12 +21,12 @@ jest.unstable_mockModule('../src/options', () => ({
         inputDirectory: './default-input',
         outputDirectory: './default-output',
         outputStructure: 'month',
-        filenameOptions: ['date', 'subject'],
+        outputFilenameOptions: ['date', 'subject'],
         extensions: ['md']
     },
     DEFAULT_ALLOWED_OPTIONS: {
         outputStructures: ['none', 'year', 'month', 'day'],
-        filenameOptions: ['date', 'time', 'subject'],
+        outputFilenameOptions: ['date', 'time', 'subject'],
         extensions: ['mp3', 'mp4', 'wav', 'webm']
     }
 }));
@@ -40,8 +37,22 @@ let Storage: any;
 let Options: any;
 let Arguments: any;
 
+// Move dynamic imports here, outside beforeEach
+let DatesModule: any;
+let StorageModule: any;
+let OptionsModule: any; // Renamed to avoid conflict with the 'Options' type/interface
+let ArgumentsModule: any; // Renamed to avoid conflict
+
 describe('arguments', () => {
     jest.setTimeout(60000); // Increase timeout for hooks and tests in this suite
+
+    // Initialize modules once before all tests
+    beforeAll(async () => {
+        DatesModule = await import('../src/util/dates');
+        StorageModule = await import('../src/util/storage');
+        OptionsModule = await import('../src/options');
+        ArgumentsModule = await import('../src/arguments');
+    });
 
     let mockDates: any;
     let mockStorage: any;
@@ -56,12 +67,12 @@ describe('arguments', () => {
             inputDirectory: './test-input',
             outputDirectory: './test-output',
             outputStructure: 'month',
-            filenameOptions: ['date', 'subject'],
+            outputFilenameOptions: ['date', 'subject'],
             extensions: ['mp3', 'mp4']
         },
         allowed: {
             outputStructures: ['none', 'year', 'month', 'day'],
-            filenameOptions: ['date', 'time', 'subject'],
+            outputFilenameOptions: ['date', 'time', 'subject'],
             extensions: ['mp3', 'mp4', 'wav', 'webm']
         }
     };
@@ -70,17 +81,10 @@ describe('arguments', () => {
         // Reset mocks
         jest.clearAllMocks();
 
-        // Add dynamic imports back
-        Dates = await import('../src/util/dates');
-        Storage = await import('../src/util/storage');
-        Options = await import('../src/options');
-        Arguments = await import('../src/arguments');
-
         // Setup dates mock
         mockDates = {
             validTimezones: jest.fn().mockReturnValue(['Etc/UTC', 'America/New_York', 'Europe/London'])
         };
-        (Dates.validTimezones as jest.Mock).mockImplementation(mockDates.validTimezones);
 
         // Setup storage mock
         mockStorageInstance = {
@@ -90,7 +94,7 @@ describe('arguments', () => {
         mockStorage = {
             create: jest.fn().mockReturnValue(mockStorageInstance)
         };
-        (Storage.create as jest.Mock).mockImplementation(mockStorage.create);
+        (StorageModule.create as jest.Mock).mockImplementation(mockStorage.create);
 
         // Setup options mock
         mockOptionsInstance = {
@@ -101,28 +105,28 @@ describe('arguments', () => {
         mockOptions = {
             create: jest.fn().mockReturnValue(mockOptionsInstance)
         };
-        (Options.create as jest.Mock).mockImplementation(mockOptions.create);
+        (OptionsModule.create as jest.Mock).mockImplementation(mockOptions.create);
     });
 
     describe('configure', () => {
         it('should configure a command with default options', async () => {
             // Use options from the mock
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
             const command = new Command();
 
             const spy = jest.spyOn(command, 'option');
 
             await args.configure(command);
 
-            expect(spy).toHaveBeenCalledTimes(7);
+            expect(spy).toHaveBeenCalledTimes(11);
             expect(spy).toHaveBeenCalledWith('--timezone <timezone>', expect.any(String), 'America/New_York');
             expect(spy).toHaveBeenCalledWith('-r, --recursive', expect.any(String), true);
             expect(spy).toHaveBeenCalledWith('-o, --output-directory <outputDirectory>', expect.any(String), './test-output');
             expect(spy).toHaveBeenCalledWith('-i, --input-directory <inputDirectory>', expect.any(String), './test-input');
             expect(spy).toHaveBeenCalledWith('--output-structure <type>', expect.any(String), 'month');
-            expect(spy).toHaveBeenCalledWith('--filename-options [filenameOptions...]', expect.any(String), ['date', 'subject']);
+            expect(spy).toHaveBeenCalledWith('--output-filename-options [outputFilenameOptions...]', expect.any(String), ['date', 'subject']);
             expect(spy).toHaveBeenCalledWith('--extensions [extensions...]', expect.any(String), ['mp3', 'mp4']);
 
             expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
@@ -136,9 +140,9 @@ describe('arguments', () => {
                 isFeatureEnabled: jest.fn().mockReturnValue(true)
             };
 
-            (Options.create as jest.Mock).mockReturnValueOnce(noDefaultsOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(noDefaultsOptionsInstance);
 
-            const args = Arguments.create(noDefaultsOptionsInstance);
+            const args = ArgumentsModule.create(noDefaultsOptionsInstance);
             const command = new Command();
 
             const spy = jest.spyOn(command, 'option');
@@ -155,9 +159,9 @@ describe('arguments', () => {
 
     describe('validate', () => {
         it('should validate input with all valid options', async () => {
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -168,8 +172,8 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
-                extensions: ['mp3', 'mp4']
+                outputFilenameOptions: ['date', 'subject'],
+                extensions: ['webm']
             };
 
             const result = await args.validate(input);
@@ -180,8 +184,12 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
-                extensions: ['mp3', 'mp4']
+                outputFilenameOptions: ['date', 'subject'],
+                extensions: ['webm'],
+                inputStructure: 'month',
+                inputFilenameOptions: ['date', 'subject'],
+                startDate: undefined,
+                endDate: expect.any(Date)
             });
 
             expect(mockStorageInstance.isDirectoryReadable).toHaveBeenCalledWith('./valid-input');
@@ -190,9 +198,9 @@ describe('arguments', () => {
         }, 60000);
 
         it('should use default values when not provided in input', async () => {
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -203,7 +211,7 @@ describe('arguments', () => {
                 recursive: true,
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
-                // outputStructure, filenameOptions, extensions missing
+                // outputStructure, outputFilenameOptions, extensions missing
             };
 
             const result = await args.validate(input);
@@ -214,9 +222,13 @@ describe('arguments', () => {
                 recursive: true,
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
-                outputStructure: 'month', // From options
-                filenameOptions: ['date', 'subject'], // From options
-                extensions: DEFAULT_EXTENSIONS // From options
+                outputStructure: 'month',
+                outputFilenameOptions: ['date', 'subject'],
+                extensions: DEFAULT_EXTENSIONS,
+                inputStructure: 'month',
+                inputFilenameOptions: ['date', 'subject'],
+                startDate: undefined,
+                endDate: expect.any(Date)
             });
 
             expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
@@ -227,9 +239,9 @@ describe('arguments', () => {
             const featureCheck = (feature: Feature) => feature === 'input';
             mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
 
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(false);
 
@@ -239,7 +251,7 @@ describe('arguments', () => {
                 inputDirectory: './invalid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -252,9 +264,9 @@ describe('arguments', () => {
             const featureCheck = (feature: Feature) => feature !== 'input';
             mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
 
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(false);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -264,7 +276,7 @@ describe('arguments', () => {
                 recursive: true,
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -280,9 +292,9 @@ describe('arguments', () => {
             const featureCheck = (feature: Feature) => feature === 'output';
             mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
 
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(false);
@@ -293,7 +305,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './invalid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -306,9 +318,9 @@ describe('arguments', () => {
             const featureCheck = (feature: Feature) => feature === 'structured-output';
             mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
 
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -319,7 +331,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'invalid-structure',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['mp3', 'mp4']
             };
 
@@ -333,9 +345,9 @@ describe('arguments', () => {
             const featureCheck = (feature: Feature) => feature === 'extensions';
             mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
 
-            (Options.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
+            (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
-            const args = Arguments.create(mockOptionsInstance);
+            const args = ArgumentsModule.create(mockOptionsInstance);
 
             mockStorageInstance.isDirectoryReadable.mockReturnValue(true);
             mockStorageInstance.isDirectoryWritable.mockReturnValue(true);
@@ -346,7 +358,7 @@ describe('arguments', () => {
                 inputDirectory: './valid-input',
                 outputDirectory: './valid-output',
                 outputStructure: 'month',
-                filenameOptions: ['date', 'subject'],
+                outputFilenameOptions: ['date', 'subject'],
                 extensions: ['invalid-ext']
             };
 

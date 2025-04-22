@@ -12,9 +12,15 @@ export const create = (timezone: string, config: Config, options: Options, logge
 } => {
     const dates = Dates.create({ timezone });
     const storage: Storage.Utility = Storage.create({ log: logger.debug });
-    const { outputDirectory, outputStructure, filenameOptions } = config;
+
+    const { outputDirectory, outputStructure, outputFilenameOptions } = config;
 
     function formatDate(date: Date, outputStructure: 'none' | 'year' | 'month' | 'day'): string {
+
+        if (!outputStructure) {
+            throw new Error('Unable to Create Output: Output structure is not set');
+        }
+
         switch (outputStructure) {
             case 'none':
                 return dates.format(date, DATE_FORMAT_YEAR_MONTH_DAY);
@@ -49,13 +55,13 @@ export const create = (timezone: string, config: Config, options: Options, logge
         const parts: string[] = [];
 
         // Add date if requested
-        if (filenameOptions?.includes('date')) {
-            const dateStr = formatDate(date, outputStructure);
+        if (outputFilenameOptions?.includes('date')) {
+            const dateStr = formatDate(date, outputStructure!);
             parts.push(dateStr);
         }
 
         // Add time if requested
-        if (filenameOptions?.includes('time')) {
+        if (outputFilenameOptions?.includes('time')) {
             const dates = Dates.create({ timezone });
             const timeStr = dates.format(date, 'HHmm');
             parts.push(timeStr);
@@ -72,6 +78,18 @@ export const create = (timezone: string, config: Config, options: Options, logge
     }
 
     function constructOutputDirectory(creationTime: Date) {
+
+        // Throw this error to ensure that we don't success if outputDirectory or outputStructure are not set
+        if (!outputDirectory) {
+            throw new Error('Unable to Create Output: Output directory is not set');
+        }
+
+
+        if (!outputStructure) {
+            throw new Error('Unable to Create Output: Output structure is not set');
+        }
+
+
         const date = dates.date(creationTime);
         const year = dates.format(date, DATE_FORMAT_YEAR);
         const month = dates.format(date, DATE_FORMAT_MONTH);
@@ -80,16 +98,16 @@ export const create = (timezone: string, config: Config, options: Options, logge
         let outputPath: string;
         switch (outputStructure) {
             case 'year':
-                outputPath = path.join(outputDirectory, year);
+                outputPath = path.join(outputDirectory!, year);
                 break;
             case 'month':
-                outputPath = path.join(outputDirectory, year, month);
+                outputPath = path.join(outputDirectory!, year, month);
                 break;
             case 'day':
-                outputPath = path.join(outputDirectory, year, month, day);
+                outputPath = path.join(outputDirectory!, year, month, day);
                 break;
             default:
-                outputPath = outputDirectory;
+                outputPath = outputDirectory!;
         }
 
         storage.createDirectory(outputPath);

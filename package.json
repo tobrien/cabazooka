@@ -1,6 +1,6 @@
 {
     "name": "@tobrien/cabazooka",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "cabazooka doesn't help you think. It removes what gets in the way.",
     "main": "dist/cabazooka.js",
     "type": "module",
@@ -8,7 +8,7 @@
         "type": "git",
         "url": "git+https://github.com/tobrien/cabazooka.git"
     },
-    "packageManager": "pnpm@10.8.1",
+    "packageManager": "pnpm@10.9.0",
     "exports": {
         ".": {
             "import": "./dist/cabazooka.js",
