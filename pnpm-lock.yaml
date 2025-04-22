@@ -43,7 +43,7 @@ importers:
         version: 0.5.48
       openai:
         specifier: ^4.91.1
-        version: 4.91.1(zod@3.24.2)
+        version: 4.95.1(zod@3.24.2)
       winston:
         specifier: ^3.17.0
         version: 3.17.0
@@ -2346,8 +2346,8 @@ packages:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
 
-  openai@4.91.1:
-    resolution: {integrity: sha512-DbjrR0hIMQFbxz8+3qBsfPJnh3+I/skPgoSlT7f9eiZuhGBUissPQULNgx6gHNkLoZ3uS0uYS6eXPUdtg4nHzw==}
+  openai@4.95.1:
+    resolution: {integrity: sha512-IqJy+ymeW+k/Wq+2YVN3693OQMMcODRtHEYOlz263MdUwnN/Dwdl9c2EXSxLLtGEHkSHAfvzpDMHI5MaWJKXjQ==}
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
@@ -5620,7 +5620,7 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@4.91.1(zod@3.24.2):
+  openai@4.95.1(zod@3.24.2):
     dependencies:
       '@types/node': 18.19.86
       '@types/node-fetch': 2.6.12
