@@ -11,10 +11,14 @@ export interface DefaultOptions {
     timezone?: string;
     recursive?: boolean;
     inputDirectory?: string;
+    inputStructure?: OutputStructure;
+    inputFilenameOptions?: FilenameOption[];
     outputDirectory?: string;
     outputStructure?: OutputStructure;
     outputFilenameOptions?: FilenameOption[];
     extensions?: string[];
+    startDate?: string;
+    endDate?: string;
 }
 
 export interface AllowedOptions {

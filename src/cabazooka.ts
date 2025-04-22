@@ -1,9 +1,14 @@
 import { Command } from 'commander';
 import { Logger } from "winston";
 import * as Arguments from './arguments';
+import { ArgumentError } from './error/ArgumentError';
 import * as Output from './output';
 import * as Storage from './util/storage';
 import * as Options from './options';
+import * as Constants from "./constants";
+import * as Dates from './util/dates';
+import { FilenameOption, OutputStructure } from "./options";
+import { Options as CabazookaOptions } from "./options";
 
 export * from './options';
 
@@ -24,23 +29,33 @@ export interface Input {
     recursive: boolean;
     timezone: string;
     inputDirectory: string;
+    inputStructure?: string;
+    inputFilenameOptions?: string[];
     outputDirectory: string;
-    extensions: string[];
     outputStructure?: string;
     outputFilenameOptions?: string[];
+    extensions: string[];
+    start?: string;
+    end?: string;
 }
 
 export interface Config {
     timezone: string;
-    recursive: boolean;
-    inputDirectory: string;
-    outputDirectory: string;
-    outputStructure: Options.OutputStructure;
-    outputFilenameOptions: Options.FilenameOption[];
-    extensions: string[];
+    inputDirectory?: string;
+    inputStructure?: OutputStructure;
+    inputFilenameOptions?: FilenameOption[];
+    recursive?: boolean;
+    outputDirectory?: string;
+    outputStructure?: OutputStructure;
+    outputFilenameOptions?: FilenameOption[];
+    extensions?: string[];
+    startDate?: Date; // YYYY-M-D string parsed to Date
+    endDate?: Date; // YYYY-M-D string parsed to Date
 }
 
-export const create = (options: Options.Options): Cabazooka => {
+export type FileData = object;
+
+export const create = (options: CabazookaOptions): Cabazooka => {
 
     let logger: Logger | typeof console = console;
 
@@ -75,13 +90,13 @@ export const create = (options: Options.Options): Cabazooka => {
             const storage: Storage.Utility = Storage.create({ log: logger.debug });
 
             let filePattern = `${config.recursive ? '**/' : ''}*`;
-            if (options.isFeatureEnabled('extensions') && config.extensions.length > 0) {
-                filePattern += `.{${config.extensions.join(',')}}`;
+            if (options.isFeatureEnabled('extensions') && config.extensions && config.extensions.length > 0) {
+                filePattern += `.{${config.extensions!.join(',')}}`;
             }
 
             logger.info('Processing files in %s with pattern %s', inputDirectory, filePattern);
             let fileCount = 0;
-            await storage.forEachFileIn(inputDirectory, async (file: string) => {
+            await storage.forEachFileIn(inputDirectory!, async (file: string) => {
                 try {
                     logger.debug('Processing file %s', file);
                     await callback(file);
@@ -124,6 +139,69 @@ export const create = (options: Options.Options): Cabazooka => {
         operate,
     }
 }
+
+const run = async (args: string[]): Promise<void> => {
+
+    const logger: typeof console = console;
+
+    const features: Options.Feature[] = ['input', 'output', 'structured-output', 'extensions', 'structured-input'];
+    const options = Options.createOptions({ features });
+
+    const argumentHandler = Arguments.create(options);
+
+    const command = new Command();
+    command
+        .version(Constants.VERSION, '-v, --version', 'output the current version')
+        .description("Organizes files based on date and subject.")
+        .usage('[options]');
+
+    await argumentHandler.configure(command);
+
+    command.parse(args);
+    const input: Input = command.opts();
+
+    try {
+        const config = await argumentHandler.validate(input);
+        logger.log('Configuration validated:', config);
+
+        // Process files
+        if (config.inputDirectory && options.isFeatureEnabled('input')) {
+            const cabazookaInstance = create(options);
+            // If a proper Logger (e.g., Winston) is available, set it here:
+            // cabazookaInstance.setLogger(myWinstonLogger);
+            const operator = await cabazookaInstance.operate(config);
+
+            // Example callback - replace with actual file processing logic
+            const processFileCallback = async (file: string) => {
+                logger.debug(`Processing file via callback: ${file}`);
+                // TODO: Implement actual file processing/moving/renaming logic here
+                // Example: Get new filename/directory
+                // const createDate = new Date(); // Replace with actual date extraction
+                // const newFilename = await operator.constructFilename(createDate, 'txt', 'hash');
+                // const newDir = await operator.constructOutputDirectory(createDate);
+                // await storage.moveFile(file, storage.joinPath(newDir, newFilename));
+            };
+
+            await operator.process(processFileCallback);
+            logger.log(`Processing complete.`); // Count is logged within operator.process
+        } else {
+            logger.log('Input directory not configured or input feature disabled, skipping file processing.');
+        }
+
+    } catch (error: unknown) {
+        if (error instanceof ArgumentError) {
+            logger.error(`Argument Error: ${error.message}`);
+        } else if (error instanceof Error) {
+            logger.error(`An unexpected error occurred: ${error.message}\nStack: ${error.stack}`);
+        } else {
+            logger.error('An unknown error occurred:', error);
+        }
+        // process.exit(1);
+    }
+}
+
+// Export the run function for testing or external use
+export { run };
 
 
 

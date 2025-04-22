@@ -28,6 +28,8 @@ export const DEFAULT_OUTPUT_DIRECTORY = './';
 
 export const DEFAULT_OUTPUT_STRUCTURE = 'month' as OutputStructure;
 export const DEFAULT_OUTPUT_FILENAME_OPTIONS = ['date', 'subject'] as FilenameOption[];
+export const DEFAULT_INPUT_STRUCTURE = 'month' as OutputStructure;
+export const DEFAULT_INPUT_FILENAME_OPTIONS = ['date', 'subject'] as FilenameOption[];
 export const DEFAULT_EXTENSIONS = ['md'] as string[];
 
 export const ALLOWED_OUTPUT_STRUCTURES = ['none', 'year', 'month', 'day'] as OutputStructure[];
