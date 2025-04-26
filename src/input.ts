@@ -110,6 +110,7 @@ const parseDateFromString = (
         }
 
         return date;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
         // console.error(`Error parsing date string "${dateStr}" with format ${format}:`, e);
         return null;
