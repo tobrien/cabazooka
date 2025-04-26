@@ -77,22 +77,3 @@ export const DEFAULT_OPTIONS = {
     features: DEFAULT_FEATURES,
     addDefaults: true
 };
-
-export const createOptions = (
-    options: {
-        defaults?: DefaultOptions,
-        allowed?: AllowedOptions,
-        features?: Feature[],
-        addDefaults?: boolean
-    } = DEFAULT_OPTIONS
-): Options => {
-
-    const mergedOptions: Partial<Options> = {
-        ...DEFAULT_OPTIONS,
-        ...options,
-    }
-
-    return {
-        ...mergedOptions,
-    } as Options;
-}

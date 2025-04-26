@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Config } from '../src/cabazooka'; // Import Config type
-import { DEFAULT_FEATURES, Options } from '../src/options'; // Import Options type
+import { DEFAULT_FEATURES, Options, DEFAULT_APP_OPTIONS, DEFAULT_ALLOWED_OPTIONS } from '../src/options'; // Import Options type
 import * as path from 'path';
 
 // Mock the storage utility
@@ -35,16 +35,16 @@ describe('Input Module', () => {
         outputFilenameOptions: [] // Needed for Config type
     };
 
-    const baseOptions = {
-        isFeatureEnabled: jest.fn<(feature: string) => boolean>(),
-        addDefaults: true,
-        features: DEFAULT_FEATURES
+    const baseOptions: Options = {
+        defaults: DEFAULT_APP_OPTIONS,
+        allowed: DEFAULT_ALLOWED_OPTIONS,
+        features: DEFAULT_FEATURES,
+        addDefaults: true
     };
 
     beforeEach(async () => {
         // Clear all mocks before each test
         jest.clearAllMocks();
-        baseOptions.isFeatureEnabled.mockClear();
 
         // Dynamically import the mocked Storage and the Input module
         Storage = await import('../src/util/storage');
@@ -59,14 +59,8 @@ describe('Input Module', () => {
         // Setup mock callback for the process function
         mockCallback = jest.fn(async () => { }); // Provide a basic async implementation
 
-        // Default feature flags
-        baseOptions.isFeatureEnabled.mockImplementation((feature: string): boolean => {
-            if (feature === 'input') return true;
-            if (feature === 'extensions') return false; // Default to false unless overridden
-            return false;
-        });
-        baseOptions.addDefaults = true;
-        baseOptions.features = DEFAULT_FEATURES;
+        // Reset features for baseOptions if needed, though typically set per test or use default
+        baseOptions.features = [...DEFAULT_FEATURES]; // Use spread to avoid modifying the original
     });
 
     const createInputInstance = (config: Config = baseConfig, options: Options = baseOptions as Options) => {
@@ -127,16 +121,11 @@ describe('Input Module', () => {
 
     it('should process files with specific extensions when feature is enabled', async () => {
         const extConfig = { ...baseConfig, extensions: ['txt', 'log'] };
-        const extOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation((feature: string): boolean => {
-                if (feature === 'input') return true;
-                if (feature === 'extensions') return true;
-                return false;
-            }),
-            addDefaults: true,
-            features: DEFAULT_FEATURES
+        const extOptions: Options = {
+            ...baseOptions,
+            features: ['input', 'extensions']
         };
-        inputInstance = createInputInstance(extConfig, extOptions as Options);
+        inputInstance = createInputInstance(extConfig, extOptions);
         const files = ['/test/input/file1.txt', '/test/input/another.log'];
         mockStorageInstance.forEachFileIn.mockImplementation(async (dir: string, cb: Function, opts: any) => {
             expect(opts.pattern).toBe('*.{txt,log}');
@@ -159,16 +148,11 @@ describe('Input Module', () => {
 
     it('should process files recursively with specific extensions when feature is enabled', async () => {
         const extConfig = { ...baseConfig, recursive: true, extensions: ['txt', 'log'] };
-        const extOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation((feature: string): boolean => {
-                if (feature === 'input') return true;
-                if (feature === 'extensions') return true;
-                return false;
-            }),
-            addDefaults: true,
-            features: DEFAULT_FEATURES
+        const extOptions: Options = {
+            ...baseOptions,
+            features: ['input', 'extensions']
         };
-        inputInstance = createInputInstance(extConfig, extOptions as Options);
+        inputInstance = createInputInstance(extConfig, extOptions);
         const files = ['/test/input/sub/file1.txt', '/test/input/deep/another.log'];
         mockStorageInstance.forEachFileIn.mockImplementation(async (dir: string, cb: Function, opts: any) => {
             expect(opts.pattern).toBe('**/*.{txt,log}');
@@ -192,11 +176,14 @@ describe('Input Module', () => {
 
     it('should not include extensions in pattern if feature is disabled', async () => {
         const extConfig = { ...baseConfig, extensions: ['txt', 'log'] };
-        // extensions feature disabled by default setup in beforeEach
-        inputInstance = createInputInstance(extConfig);
+        const noExtOptions: Options = {
+            ...baseOptions,
+            features: ['input']
+        };
+        inputInstance = createInputInstance(extConfig, noExtOptions);
 
         mockStorageInstance.forEachFileIn.mockImplementation(async (dir: string, cb: Function, opts: any) => {
-            expect(opts.pattern).toBe('*.{txt,log}'); // No extensions
+            expect(opts.pattern).toBe('*.*');
             return 0;
         });
 
@@ -205,7 +192,7 @@ describe('Input Module', () => {
         expect(mockStorageInstance.forEachFileIn).toHaveBeenCalledWith(
             extConfig.inputDirectory,
             expect.any(Function),
-            { pattern: '*.{txt,log}' }
+            { pattern: '*.*' }
         );
         expect(mockLogger.info).toHaveBeenCalledWith("Processed %d files matching criteria.", 0);
     });
@@ -315,16 +302,12 @@ describe('parseDateFromString function', () => {
             outputFilenameOptions: []
         };
 
-        const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>(),
-            addDefaults: true,
-            features: DEFAULT_FEATURES
+        const baseOptions: Options = {
+            defaults: DEFAULT_APP_OPTIONS,
+            allowed: DEFAULT_ALLOWED_OPTIONS,
+            features: DEFAULT_FEATURES,
+            addDefaults: true
         };
-
-        baseOptions.isFeatureEnabled.mockImplementation((feature: string): boolean => {
-            if (feature === 'input') return true;
-            return false;
-        });
 
         inputInstance = InputModule.create(baseConfig, baseOptions as Options, mockLogger as any);
         // Access the function through _internal
@@ -486,16 +469,12 @@ describe('isDateInRange function', () => {
             outputFilenameOptions: []
         };
 
-        const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>(),
-            addDefaults: true,
-            features: DEFAULT_FEATURES
+        const baseOptions: Options = {
+            defaults: DEFAULT_APP_OPTIONS,
+            allowed: DEFAULT_ALLOWED_OPTIONS,
+            features: DEFAULT_FEATURES,
+            addDefaults: true
         };
-
-        baseOptions.isFeatureEnabled.mockImplementation((feature: string): boolean => {
-            if (feature === 'input') return true;
-            return false;
-        });
 
         inputInstance = InputModule.create(baseConfig, baseOptions as Options, mockLogger as any);
         // Access the function through _internal
@@ -612,7 +591,10 @@ describe('getFilePattern function', () => {
 
     beforeEach(() => {
         mockOptions = {
-            isFeatureEnabled: jest.fn()
+            defaults: DEFAULT_APP_OPTIONS,
+            allowed: DEFAULT_ALLOWED_OPTIONS,
+            features: DEFAULT_FEATURES,
+            addDefaults: true
         };
         mockConfig = {
             extensions: []
@@ -627,12 +609,7 @@ describe('getFilePattern function', () => {
 
     const setupTest = async (extensionsEnabled: boolean, extensions: string[] = []) => {
         const InputModule = await import('../src/input');
-        mockOptions.isFeatureEnabled.mockImplementation((feature: string): boolean => {
-            if (feature === 'extensions') return extensionsEnabled;
-            return true;
-        });
-        mockOptions.features = DEFAULT_FEATURES;
-        mockOptions.addDefaults = true;
+        mockOptions.features = extensionsEnabled ? ['extensions'] : [];
         mockConfig.extensions = extensions;
 
         inputInstance = InputModule.create(mockConfig, mockOptions as Options, mockLogger as any);
@@ -642,8 +619,8 @@ describe('getFilePattern function', () => {
 
     it('should return **/*.* when extensions feature is disabled', async () => {
         const pattern = await setupTest(false, ['txt', 'log']);
-        expect(pattern).toBe('**/*.{txt,log}');
-        expect(mockLogger.debug).toHaveBeenCalledWith('Applying extension filter: txt,log');
+        expect(pattern).toBe('**/*.*');
+        expect(mockLogger.debug).toHaveBeenCalledWith('No extension filter applied, using pattern: **/*.*');
     });
 
     it('should return **/*.* when extensions is empty', async () => {
@@ -690,10 +667,11 @@ describe('parseDateFromFilePath function', () => {
             outputFilenameOptions: []
         };
 
-        const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation(() => true),
-            addDefaults: true,
-            features: DEFAULT_FEATURES
+        const baseOptions: Options = {
+            defaults: DEFAULT_APP_OPTIONS,
+            allowed: DEFAULT_ALLOWED_OPTIONS,
+            features: DEFAULT_FEATURES,
+            addDefaults: true
         };
 
         inputInstance = InputModule.create(baseConfig, baseOptions as Options, mockLogger as any);
@@ -829,10 +807,11 @@ describe('processStructuredFile function', () => {
     const setupTest = async () => {
         const InputModule = await import('../src/input');
 
-        const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation(() => true),
-            addDefaults: true,
-            features: DEFAULT_FEATURES
+        const baseOptions: Options = {
+            defaults: DEFAULT_APP_OPTIONS,
+            allowed: DEFAULT_ALLOWED_OPTIONS,
+            features: DEFAULT_FEATURES,
+            addDefaults: true
         };
 
         inputInstance = InputModule.create(mockConfig, baseOptions as Options, mockLogger as any);
@@ -1047,18 +1026,11 @@ describe('Structured input processing', () => {
         };
 
         baseOptions = {
-            isFeatureEnabled: jest.fn(),
+            defaults: DEFAULT_APP_OPTIONS,
+            allowed: DEFAULT_ALLOWED_OPTIONS,
             features: DEFAULT_FEATURES,
             addDefaults: true
         };
-
-        // Default feature flags
-        baseOptions.isFeatureEnabled.mockImplementation((feature: string): boolean => {
-            if (feature === 'input') return true;
-            if (feature === 'structured-input') return true;
-            if (feature === 'extensions') return false;
-            return false;
-        });
 
         // Setup storage mock
         const Storage = await import('../src/util/storage');

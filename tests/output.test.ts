@@ -1,4 +1,6 @@
 import { jest } from '@jest/globals';
+// Import necessary types and defaults for options
+import { Options, DEFAULT_APP_OPTIONS, DEFAULT_ALLOWED_OPTIONS, DEFAULT_FEATURES } from '../src/options';
 
 jest.unstable_mockModule('../src/util/dates', () => ({
     create: jest.fn()
@@ -25,7 +27,13 @@ describe('output', () => {
         outputFilenameOptions: ['date', 'time']
     };
 
-    const mockOptions = {};
+    // Update mockOptions to be a valid Options object
+    const mockOptions: Options = {
+        defaults: DEFAULT_APP_OPTIONS,
+        allowed: DEFAULT_ALLOWED_OPTIONS,
+        features: DEFAULT_FEATURES,
+        addDefaults: true
+    };
 
     beforeEach(async () => {
         // Reset mocks

@@ -4,7 +4,10 @@ import { z } from 'zod';
 import * as Arguments from './arguments';
 import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE } from './constants';
 import * as Input from './input';
-import { Options as CabazookaOptions, FilenameOption, FilenameOptionSchema, FilesystemStructure, FilesystemStructureSchema } from "./options";
+import {
+    Options as CabazookaOptions, FilenameOption, FilenameOptionSchema, FilesystemStructure, FilesystemStructureSchema,
+    DEFAULT_OPTIONS, DefaultOptions, AllowedOptions, Feature, DEFAULT_APP_OPTIONS, DEFAULT_ALLOWED_OPTIONS, DEFAULT_FEATURES
+} from "./options";
 import * as Output from './output';
 
 export * from './options';
@@ -61,7 +64,16 @@ export type Config = z.infer<typeof ConfigSchema>;
 
 export type FileData = object;
 
-export const create = (options: CabazookaOptions): Cabazooka => {
+export const create = (
+    creationOptsParam: Partial<CabazookaOptions> = {}
+): Cabazooka => {
+
+    const options: CabazookaOptions = {
+        defaults: { ...DEFAULT_APP_OPTIONS, ...creationOptsParam.defaults },
+        allowed: { ...DEFAULT_ALLOWED_OPTIONS, ...creationOptsParam.allowed },
+        features: creationOptsParam.features || DEFAULT_FEATURES,
+        addDefaults: creationOptsParam.addDefaults === undefined ? DEFAULT_OPTIONS.addDefaults : creationOptsParam.addDefaults
+    };
 
     let logger: Logger | typeof console = console;
 
@@ -119,7 +131,7 @@ export const create = (options: CabazookaOptions): Cabazooka => {
         }
 
         if (options.features.includes('input')) {
-            configWithDefaults.recursive = config.recursive === undefined ? DEFAULT_RECURSIVE : config.recursive;
+            configWithDefaults.recursive = config.recursive === undefined ? (options.defaults?.recursive ?? DEFAULT_RECURSIVE) : config.recursive;
             configWithDefaults.inputDirectory = config.inputDirectory || (options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY);
         }
         if (options.features.includes('output')) {
