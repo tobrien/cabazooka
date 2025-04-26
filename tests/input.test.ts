@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Config } from '../src/cabazooka'; // Import Config type
-import { Options } from '../src/options'; // Import Options type
+import { DEFAULT_FEATURES, Options } from '../src/options'; // Import Options type
 import * as path from 'path';
 
 // Mock the storage utility
@@ -36,7 +36,9 @@ describe('Input Module', () => {
     };
 
     const baseOptions = {
-        isFeatureEnabled: jest.fn<(feature: string) => boolean>()
+        isFeatureEnabled: jest.fn<(feature: string) => boolean>(),
+        addDefaults: true,
+        features: DEFAULT_FEATURES
     };
 
     beforeEach(async () => {
@@ -63,6 +65,8 @@ describe('Input Module', () => {
             if (feature === 'extensions') return false; // Default to false unless overridden
             return false;
         });
+        baseOptions.addDefaults = true;
+        baseOptions.features = DEFAULT_FEATURES;
     });
 
     const createInputInstance = (config: Config = baseConfig, options: Options = baseOptions as Options) => {
@@ -137,7 +141,9 @@ describe('Input Module', () => {
                 if (feature === 'input') return true;
                 if (feature === 'extensions') return true;
                 return false;
-            })
+            }),
+            addDefaults: true,
+            features: DEFAULT_FEATURES
         };
         inputInstance = createInputInstance(extConfig, extOptions as Options);
         const files = ['/test/input/file1.txt', '/test/input/another.log'];
@@ -167,7 +173,9 @@ describe('Input Module', () => {
                 if (feature === 'input') return true;
                 if (feature === 'extensions') return true;
                 return false;
-            })
+            }),
+            addDefaults: true,
+            features: DEFAULT_FEATURES
         };
         inputInstance = createInputInstance(extConfig, extOptions as Options);
         const files = ['/test/input/sub/file1.txt', '/test/input/deep/another.log'];
@@ -317,7 +325,9 @@ describe('parseDateFromString function', () => {
         };
 
         const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>()
+            isFeatureEnabled: jest.fn<(feature: string) => boolean>(),
+            addDefaults: true,
+            features: DEFAULT_FEATURES
         };
 
         baseOptions.isFeatureEnabled.mockImplementation((feature: string): boolean => {
@@ -486,7 +496,9 @@ describe('isDateInRange function', () => {
         };
 
         const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>()
+            isFeatureEnabled: jest.fn<(feature: string) => boolean>(),
+            addDefaults: true,
+            features: DEFAULT_FEATURES
         };
 
         baseOptions.isFeatureEnabled.mockImplementation((feature: string): boolean => {
@@ -686,7 +698,9 @@ describe('parseDateFromFilePath function', () => {
         };
 
         const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation(() => true)
+            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation(() => true),
+            addDefaults: true,
+            features: DEFAULT_FEATURES
         };
 
         inputInstance = InputModule.create(baseConfig, baseOptions as Options, mockLogger as any);
@@ -823,7 +837,9 @@ describe('processStructuredFile function', () => {
         const InputModule = await import('../src/input');
 
         const baseOptions = {
-            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation(() => true)
+            isFeatureEnabled: jest.fn<(feature: string) => boolean>().mockImplementation(() => true),
+            addDefaults: true,
+            features: DEFAULT_FEATURES
         };
 
         inputInstance = InputModule.create(mockConfig, baseOptions as Options, mockLogger as any);

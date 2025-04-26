@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { Logger } from "winston";
 import { z } from 'zod';
 import * as Arguments from './arguments';
+import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE } from './constants';
 import * as Input from './input';
 import { Options as CabazookaOptions, FilenameOption, FilenameOptionSchema, FilesystemStructure, FilesystemStructureSchema } from "./options";
 import * as Output from './output';
@@ -12,6 +13,7 @@ export interface Cabazooka {
     configure: (command: Command) => Promise<Command>;
     setLogger: (logger: Logger) => void;
     validate: (args: Args) => Promise<Config>;
+    applyDefaults: (config: Config) => Config;
     operate: (config: Config) => Promise<Operator>;
 }
 
@@ -74,15 +76,11 @@ export const create = (options: CabazookaOptions): Cabazooka => {
     }
 
     const validate = async (args: Args): Promise<Config> => {
-        logger.debug('Validating Input: \n\n%s\n\n', JSON.stringify(args, null, 2));
         const config = await argumentsInstance.validate(args);
-        logger.debug('Validated Config: \n\n%s\n\n', JSON.stringify(config, null, 2));
         return config;
     }
 
     const operate = async (config: Config): Promise<Operator> => {
-        logger.debug('Operating with Config: \n\n%s\n\n', JSON.stringify(config, null, 2));
-
         const output = Output.create(config.timezone, config, options, logger);
         const input = Input.create(config, options, logger);
 
@@ -115,11 +113,40 @@ export const create = (options: CabazookaOptions): Cabazooka => {
 
     }
 
+    const applyDefaults = (config: Config): Config => {
+        const configWithDefaults = {
+            ...config,
+        }
+
+        if (options.isFeatureEnabled('input')) {
+            configWithDefaults.recursive = config.recursive === undefined ? DEFAULT_RECURSIVE : config.recursive;
+            configWithDefaults.inputDirectory = config.inputDirectory || (options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY);
+        }
+        if (options.isFeatureEnabled('output')) {
+            configWithDefaults.outputDirectory = config.outputDirectory || (options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY);
+        }
+        if (options.isFeatureEnabled('structured-output')) {
+            configWithDefaults.outputStructure = config.outputStructure || (options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE);
+            configWithDefaults.outputFilenameOptions = config.outputFilenameOptions || (options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS);
+        }
+        if (options.isFeatureEnabled('extensions')) {
+            configWithDefaults.extensions = config.extensions || (options.defaults?.extensions || DEFAULT_EXTENSIONS);
+        }
+
+        if (options.isFeatureEnabled('structured-input')) {
+            configWithDefaults.inputStructure = config.inputStructure || (options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE);
+            configWithDefaults.inputFilenameOptions = config.inputFilenameOptions || (options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS);
+        }
+
+        return configWithDefaults;
+    }
+
     return {
         setLogger,
         configure,
         validate,
         operate,
+        applyDefaults,
     }
 }
 

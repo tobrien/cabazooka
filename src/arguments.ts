@@ -34,25 +34,25 @@ export const create = (options: Options): {
 
     const configure = async (command: Command): Promise<Command> => {
         let retCommand = command;
-        retCommand = retCommand.option('--timezone <timezone>', 'timezone for date calculations', options.defaults?.timezone || DEFAULT_TIMEZONE)
+        retCommand = retCommand.option('--timezone <timezone>', 'timezone for date calculations', options.addDefaults ? options.defaults?.timezone || DEFAULT_TIMEZONE : undefined)
         if (options.isFeatureEnabled('input')) {
-            retCommand = retCommand.option('-r, --recursive', 'recursive mode, process all files in the input directory', options.defaults?.recursive || DEFAULT_RECURSIVE)
-            retCommand = retCommand.option('-i, --input-directory <inputDirectory>', 'input directory', options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY)
+            retCommand = retCommand.option('-r, --recursive', 'recursive mode, process all files in the input directory', options.addDefaults ? options.defaults?.recursive || DEFAULT_RECURSIVE : undefined)
+            retCommand = retCommand.option('-i, --input-directory <inputDirectory>', 'input directory', options.addDefaults ? options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY : undefined)
         }
         if (options.isFeatureEnabled('output')) {
-            retCommand = retCommand.option('-o, --output-directory <outputDirectory>', 'output directory', options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY)
+            retCommand = retCommand.option('-o, --output-directory <outputDirectory>', 'output directory', options.addDefaults ? options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY : undefined)
         }
         if (options.isFeatureEnabled('structured-output')) {
-            retCommand = retCommand.option('--output-structure <type>', 'output directory structure (none/year/month/day)', options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE)
-            retCommand = retCommand.option('--output-filename-options [outputFilenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS)
+            retCommand = retCommand.option('--output-structure <type>', 'output directory structure (none/year/month/day)', options.addDefaults ? options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE : undefined)
+            retCommand = retCommand.option('--output-filename-options [outputFilenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.addDefaults ? options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS : undefined)
         }
         if (options.isFeatureEnabled('extensions')) {
-            retCommand = retCommand.option('--extensions [extensions...]', 'file extensions to process (space-separated list of: mp3,mp4,mpeg,mpga,m4a,wav,webm)', options.defaults?.extensions || DEFAULT_EXTENSIONS);
+            retCommand = retCommand.option('--extensions [extensions...]', 'file extensions to process (space-separated list of: mp3,mp4,mpeg,mpga,m4a,wav,webm)', options.addDefaults ? options.defaults?.extensions || DEFAULT_EXTENSIONS : undefined);
         }
 
         if (options.isFeatureEnabled('structured-input')) {
-            retCommand = retCommand.option('--input-structure <type>', 'input directory structure (none/year/month/day)', options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE)
-            retCommand = retCommand.option('--input-filename-options [options...]', 'filename format options (space-separated list of: date,time,subject)', options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS)
+            retCommand = retCommand.option('--input-structure <type>', 'input directory structure (none/year/month/day)', options.addDefaults ? options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE : undefined)
+            retCommand = retCommand.option('--input-filename-options [options...]', 'filename format options (space-separated list of: date,time,subject)', options.addDefaults ? options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS : undefined)
             retCommand = retCommand.option('--start <date>', `start date filter (${DATE_FORMAT_YEAR_MONTH_DAY})`)
             retCommand = retCommand.option('--end <date>', `end date filter (${DATE_FORMAT_YEAR_MONTH_DAY}), defaults to today`)
         }
@@ -70,26 +70,26 @@ export const create = (options: Options): {
 
         if (options.isFeatureEnabled('input') && args.inputDirectory) {
             await validateInputDirectory(args.inputDirectory);
-            config.inputDirectory = args.inputDirectory ?? DEFAULT_INPUT_DIRECTORY;
-            config.recursive = args.recursive ?? DEFAULT_RECURSIVE;
+            config.inputDirectory = options.addDefaults ? args.inputDirectory ?? DEFAULT_INPUT_DIRECTORY : undefined;
+            config.recursive = options.addDefaults ? args.recursive ?? DEFAULT_RECURSIVE : undefined;
         }
 
         if (options.isFeatureEnabled('output') && args.outputDirectory) {
             await validateOutputDirectory(args.outputDirectory);
-            config.outputDirectory = args.outputDirectory ?? DEFAULT_OUTPUT_DIRECTORY;
+            config.outputDirectory = options.addDefaults ? args.outputDirectory ?? DEFAULT_OUTPUT_DIRECTORY : undefined;
         }
 
         if (options.isFeatureEnabled('structured-output')) {
             // Validate filename options if provided
             validateOutputStructure(args.outputStructure);
             validateOutputFilenameOptions(args.outputFilenameOptions, args.outputStructure as FilesystemStructure);
-            config.outputStructure = (args.outputStructure ?? DEFAULT_OUTPUT_STRUCTURE) as FilesystemStructure;
-            config.outputFilenameOptions = (args.outputFilenameOptions ?? DEFAULT_OUTPUT_FILENAME_OPTIONS) as FilenameOption[];
+            config.outputStructure = options.addDefaults ? (args.outputStructure ?? DEFAULT_OUTPUT_STRUCTURE) as FilesystemStructure : undefined;
+            config.outputFilenameOptions = options.addDefaults ? (args.outputFilenameOptions ?? DEFAULT_OUTPUT_FILENAME_OPTIONS) as FilenameOption[] : undefined;
         }
 
         if (options.isFeatureEnabled('extensions')) {
             validateExtensions(args.extensions);
-            config.extensions = args.extensions ?? DEFAULT_EXTENSIONS;
+            config.extensions = options.addDefaults ? args.extensions ?? DEFAULT_EXTENSIONS : undefined;
         }
 
         // Create date utility after timezone is validated
@@ -102,8 +102,8 @@ export const create = (options: Options): {
             // Validate the date strings first
             validateStartEndDates(args.start, args.end, dateUtil);
 
-            config.inputStructure = (args.inputStructure ?? DEFAULT_INPUT_STRUCTURE) as FilesystemStructure;
-            config.inputFilenameOptions = (args.inputFilenameOptions ?? DEFAULT_INPUT_FILENAME_OPTIONS) as FilenameOption[];
+            config.inputStructure = options.addDefaults ? (args.inputStructure ?? DEFAULT_INPUT_STRUCTURE) as FilesystemStructure : undefined;
+            config.inputFilenameOptions = options.addDefaults ? (args.inputFilenameOptions ?? DEFAULT_INPUT_FILENAME_OPTIONS) as FilenameOption[] : undefined;
 
             // Create DateRange object if start or end dates are relevant
             // Note: Validation ensures dates are valid and start <= end if both are provided

@@ -81,7 +81,8 @@ describe('arguments', () => {
             outputStructures: ['none', 'year', 'month', 'day'],
             outputFilenameOptions: ['date', 'time', 'subject'],
             extensions: ['mp3', 'mp4', 'wav', 'webm']
-        }
+        },
+        addDefaults: true
     };
 
     beforeEach(async () => {
@@ -117,7 +118,8 @@ describe('arguments', () => {
         mockOptionsInstance = {
             defaults: options.defaults,
             allowed: options.allowed,
-            isFeatureEnabled: jest.fn().mockReturnValue(true) // Enable all features by default
+            isFeatureEnabled: jest.fn().mockReturnValue(true), // Enable all features by default
+            addDefaults: options.addDefaults
         };
         mockOptions = {
             create: jest.fn().mockReturnValue(mockOptionsInstance)
@@ -167,8 +169,8 @@ describe('arguments', () => {
             await args.configure(command);
 
             // Should use defaults from constants
-            expect(spy).toHaveBeenCalledWith('--timezone <timezone>', expect.any(String), 'Etc/UTC');
-            expect(spy).toHaveBeenCalledWith('-r, --recursive', expect.any(String), false);
+            expect(spy).toHaveBeenCalledWith('--timezone <timezone>', expect.any(String), undefined);
+            expect(spy).toHaveBeenCalledWith('-r, --recursive', expect.any(String), undefined);
 
             expect(noDefaultsOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
         }, 60000);

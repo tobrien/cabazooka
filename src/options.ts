@@ -45,7 +45,9 @@ export interface AllowedOptions {
 export interface Options {
     defaults?: DefaultOptions,
     allowed?: AllowedOptions,
+    features: Feature[],
     isFeatureEnabled: (feature: Feature) => boolean;
+    addDefaults: boolean;
 }
 
 export const DEFAULT_APP_OPTIONS: DefaultOptions = {
@@ -70,20 +72,33 @@ export const DEFAULT_ALLOWED_OPTIONS: AllowedOptions = {
 
 export const DEFAULT_FEATURES: Feature[] = ['output', 'structured-output', 'input', 'extensions'];
 
-export const createOptions = (
-    options: { defaults?: DefaultOptions, allowed?: AllowedOptions, features?: Feature[] } = { defaults: DEFAULT_APP_OPTIONS, allowed: DEFAULT_ALLOWED_OPTIONS, features: DEFAULT_FEATURES }): Options => {
+export const DEFAULT_OPTIONS = {
+    defaults: DEFAULT_APP_OPTIONS,
+    allowed: DEFAULT_ALLOWED_OPTIONS,
+    features: DEFAULT_FEATURES,
+    addDefaults: true
+};
 
-    const defaults = options.defaults || DEFAULT_APP_OPTIONS;
-    const allowed = options.allowed || DEFAULT_ALLOWED_OPTIONS;
-    const features = options.features || DEFAULT_FEATURES;
+export const createOptions = (
+    options: {
+        defaults?: DefaultOptions,
+        allowed?: AllowedOptions,
+        features?: Feature[],
+        addDefaults?: boolean
+    } = DEFAULT_OPTIONS
+): Options => {
+
+    const mergedOptions: Partial<Options> = {
+        ...DEFAULT_OPTIONS,
+        ...options,
+    }
 
     const isFeatureEnabled = (feature: Feature) => {
-        return features.includes(feature);
+        return mergedOptions.features?.includes(feature) ?? false;
     }
 
     return {
-        defaults,
-        allowed,
+        ...mergedOptions,
         isFeatureEnabled,
-    }
+    } as Options;
 }
