@@ -1,14 +1,10 @@
 import { Command } from 'commander';
 import { Logger } from "winston";
+import { z } from 'zod';
 import * as Arguments from './arguments';
-import { ArgumentError } from './error/ArgumentError';
-import * as Output from './output';
 import * as Input from './input';
-import * as Storage from './util/storage';
-import * as Options from './options';
-import * as Constants from "./constants";
-import { FilenameOption, FilesystemStructure } from "./options";
-import { Options as CabazookaOptions } from "./options";
+import { Options as CabazookaOptions, FilenameOption, FilenameOptionSchema, FilesystemStructure, FilesystemStructureSchema } from "./options";
+import * as Output from './output';
 
 export * from './options';
 
@@ -39,23 +35,27 @@ export interface Args {
     end?: string;   // End date string
 }
 
-export interface DateRange {
-    start: Date;
-    end: Date;
-}
+export const DateRangeSchema = z.object({
+    start: z.date(),
+    end: z.date(),
+});
 
-export interface Config {
-    timezone: string;
-    inputDirectory?: string;
-    inputStructure?: FilesystemStructure;
-    inputFilenameOptions?: FilenameOption[];
-    recursive?: boolean;
-    outputDirectory?: string;
-    outputStructure?: FilesystemStructure;
-    outputFilenameOptions?: FilenameOption[];
-    extensions?: string[];
-    dateRange?: DateRange; // Replaced startDate and endDate
-}
+export type DateRange = z.infer<typeof DateRangeSchema>;
+
+export const ConfigSchema = z.object({
+    timezone: z.string(),
+    inputDirectory: z.string().optional(),
+    inputStructure: FilesystemStructureSchema.optional(),
+    inputFilenameOptions: z.array(FilenameOptionSchema).optional(),
+    recursive: z.boolean().optional(),
+    outputDirectory: z.string().optional(),
+    outputStructure: FilesystemStructureSchema.optional(),
+    outputFilenameOptions: z.array(FilenameOptionSchema).optional(),
+    extensions: z.array(z.string()).optional(),
+    dateRange: DateRangeSchema.optional(),
+});
+
+export type Config = z.infer<typeof ConfigSchema>;
 
 export type FileData = object;
 
@@ -70,16 +70,19 @@ export const create = (options: CabazookaOptions): Cabazooka => {
     }
 
     const configure = (command: Command): Promise<Command> => {
-        logger.debug('Configuring Command: %j\n\n', command);
         return argumentsInstance.configure(command);
     }
 
-    const validate = (args: Args): Promise<Config> => {
-        logger.debug('Validating Input: %j\n\n', args);
-        return argumentsInstance.validate(args);
+    const validate = async (args: Args): Promise<Config> => {
+        logger.debug('Validating Input: \n\n%s\n\n', JSON.stringify(args, null, 2));
+        const config = await argumentsInstance.validate(args);
+        logger.debug('Validated Config: \n\n%s\n\n', JSON.stringify(config, null, 2));
+        return config;
     }
 
     const operate = async (config: Config): Promise<Operator> => {
+        logger.debug('Operating with Config: \n\n%s\n\n', JSON.stringify(config, null, 2));
+
         const output = Output.create(config.timezone, config, options, logger);
         const input = Input.create(config, options, logger);
 
@@ -119,70 +122,6 @@ export const create = (options: CabazookaOptions): Cabazooka => {
         operate,
     }
 }
-
-const run = async (args: string[]): Promise<void> => {
-
-    const logger: typeof console = console;
-
-    const features: Options.Feature[] = ['input', 'output', 'structured-output', 'extensions', 'structured-input'];
-    const options = Options.createOptions({ features });
-
-    const argumentHandler = Arguments.create(options);
-
-    const command = new Command();
-    command
-        .version(Constants.VERSION, '-v, --version', 'output the current version')
-        .description("Organizes files based on date and subject.")
-        .usage('[options]');
-
-    await argumentHandler.configure(command);
-
-    command.parse(args);
-    const argumentInput: Args = command.opts();
-
-    try {
-        const config = await argumentHandler.validate(argumentInput);
-        logger.log('Configuration validated:', config);
-
-        // Process files
-        if (config.inputDirectory && options.isFeatureEnabled('input')) {
-            const cabazookaInstance = create(options);
-            // If a proper Logger (e.g., Winston) is available, set it here:
-            // cabazookaInstance.setLogger(myWinstonLogger);
-            const operator = await cabazookaInstance.operate(config);
-
-            // Example callback - replace with actual file processing logic
-            const processFileCallback = async (file: string) => {
-                logger.debug(`Processing file via callback: ${file}`);
-                // TODO: Implement actual file processing/moving/renaming logic here
-                // Example: Get new filename/directory
-                // const createDate = new Date(); // Replace with actual date extraction
-                // const newFilename = await operator.constructFilename(createDate, 'txt', 'hash');
-                // const newDir = await operator.constructOutputDirectory(createDate);
-                // await storage.moveFile(file, storage.joinPath(newDir, newFilename));
-            };
-
-            await operator.process(processFileCallback);
-            logger.log(`Processing complete.`); // Count is logged within operator.process
-        } else {
-            logger.log('Input directory not configured or input feature disabled, skipping file processing.');
-        }
-
-    } catch (error: unknown) {
-        if (error instanceof ArgumentError) {
-            logger.error(`Argument Error: ${error.message}`);
-        } else if (error instanceof Error) {
-            logger.error(`An unexpected error occurred: ${error.message}\nStack: ${error.stack}`);
-        } else {
-            logger.error('An unknown error occurred:', error);
-        }
-        // process.exit(1);
-    }
-}
-
-// Export the run function for testing or external use
-export { run };
-
 
 
 

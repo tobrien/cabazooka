@@ -1,11 +1,24 @@
 import { ALLOWED_EXTENSIONS, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES, DEFAULT_EXTENSIONS, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, ALLOWED_INPUT_FILENAME_OPTIONS, ALLOWED_INPUT_STRUCTURES } from "./constants";
-import { Config } from "./cabazooka";
+import { z } from "zod";
 
 export type Feature = 'input' | 'output' | 'structured-output' | 'structured-input' | 'extensions';
 
-export type FilenameOption = 'date' | 'time' | 'subject';
-export type FilesystemStructure = 'none' | 'year' | 'month' | 'day';
+export const FilenameOptionSchema = z.enum([
+    'date',
+    'time',
+    'subject',
+]);
 
+export type FilenameOption = z.infer<typeof FilenameOptionSchema>;
+
+export const FilesystemStructureSchema = z.enum([
+    'none',
+    'year',
+    'month',
+    'day',
+]);
+
+export type FilesystemStructure = z.infer<typeof FilesystemStructureSchema>;
 
 export interface DefaultOptions {
     timezone?: string;
