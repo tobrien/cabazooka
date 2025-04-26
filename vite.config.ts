@@ -42,6 +42,9 @@ export default defineConfig({
             appPath: './src/cabazooka.ts',
             exportName: 'viteNodeApp',
             tsCompiler: 'swc',
+            swcOptions: {
+                sourceMaps: true,
+            },
         }),
         // visualizer({
         //     template: 'network',

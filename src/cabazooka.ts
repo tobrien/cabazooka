@@ -1,21 +1,19 @@
 import { Command } from 'commander';
 import { Logger } from "winston";
+import { z } from 'zod';
 import * as Arguments from './arguments';
-import { ArgumentError } from './error/ArgumentError';
+import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE } from './constants';
+import * as Input from './input';
+import { Options as CabazookaOptions, FilenameOption, FilenameOptionSchema, FilesystemStructure, FilesystemStructureSchema } from "./options";
 import * as Output from './output';
-import * as Storage from './util/storage';
-import * as Options from './options';
-import * as Constants from "./constants";
-import * as Dates from './util/dates';
-import { FilenameOption, OutputStructure } from "./options";
-import { Options as CabazookaOptions } from "./options";
 
 export * from './options';
 
 export interface Cabazooka {
     configure: (command: Command) => Promise<Command>;
     setLogger: (logger: Logger) => void;
-    validate: (input: Input) => Promise<Config>;
+    validate: (args: Args) => Promise<Config>;
+    applyDefaults: (config: Config) => Config;
     operate: (config: Config) => Promise<Operator>;
 }
 
@@ -25,33 +23,41 @@ export interface Operator {
     constructOutputDirectory: (createDate: Date) => Promise<string>;
 }
 
-export interface Input {
+export interface Args {
     recursive: boolean;
     timezone: string;
     inputDirectory: string;
-    inputStructure?: string;
-    inputFilenameOptions?: string[];
+    inputStructure?: FilesystemStructure;
+    inputFilenameOptions?: FilenameOption[];
     outputDirectory: string;
-    outputStructure?: string;
-    outputFilenameOptions?: string[];
+    outputStructure?: FilesystemStructure;
+    outputFilenameOptions?: FilenameOption[];
     extensions: string[];
-    start?: string;
-    end?: string;
+    start?: string; // Start date string
+    end?: string;   // End date string
 }
 
-export interface Config {
-    timezone: string;
-    inputDirectory?: string;
-    inputStructure?: OutputStructure;
-    inputFilenameOptions?: FilenameOption[];
-    recursive?: boolean;
-    outputDirectory?: string;
-    outputStructure?: OutputStructure;
-    outputFilenameOptions?: FilenameOption[];
-    extensions?: string[];
-    startDate?: Date; // YYYY-M-D string parsed to Date
-    endDate?: Date; // YYYY-M-D string parsed to Date
-}
+export const DateRangeSchema = z.object({
+    start: z.date(),
+    end: z.date(),
+});
+
+export type DateRange = z.infer<typeof DateRangeSchema>;
+
+export const ConfigSchema = z.object({
+    timezone: z.string(),
+    inputDirectory: z.string().optional(),
+    inputStructure: FilesystemStructureSchema.optional(),
+    inputFilenameOptions: z.array(FilenameOptionSchema).optional(),
+    recursive: z.boolean().optional(),
+    outputDirectory: z.string().optional(),
+    outputStructure: FilesystemStructureSchema.optional(),
+    outputFilenameOptions: z.array(FilenameOptionSchema).optional(),
+    extensions: z.array(z.string()).optional(),
+    dateRange: DateRangeSchema.optional(),
+});
+
+export type Config = z.infer<typeof ConfigSchema>;
 
 export type FileData = object;
 
@@ -66,48 +72,23 @@ export const create = (options: CabazookaOptions): Cabazooka => {
     }
 
     const configure = (command: Command): Promise<Command> => {
-        logger.debug('Configuring Command: %j\n\n', command);
         return argumentsInstance.configure(command);
     }
 
-    const validate = (input: Input): Promise<Config> => {
-        logger.debug('Validating Input: %j\n\n', input);
-        return argumentsInstance.validate(input);
+    const validate = async (args: Args): Promise<Config> => {
+        const config = await argumentsInstance.validate(args);
+        return config;
     }
 
     const operate = async (config: Config): Promise<Operator> => {
         const output = Output.create(config.timezone, config, options, logger);
+        const input = Input.create(config, options, logger);
 
         const process = async (callback: (file: string) => Promise<void>) => {
-
             if (!options.isFeatureEnabled('input')) {
                 throw new Error('Input feature is not enabled, skipping input processing');
             }
-
-            // Look through all files in the input directory
-            const inputDirectory = config.inputDirectory;
-
-            const storage: Storage.Utility = Storage.create({ log: logger.debug });
-
-            let filePattern = `${config.recursive ? '**/' : ''}*`;
-            if (options.isFeatureEnabled('extensions') && config.extensions && config.extensions.length > 0) {
-                filePattern += `.{${config.extensions!.join(',')}}`;
-            }
-
-            logger.info('Processing files in %s with pattern %s', inputDirectory, filePattern);
-            let fileCount = 0;
-            await storage.forEachFileIn(inputDirectory!, async (file: string) => {
-                try {
-                    logger.debug('Processing file %s', file);
-                    await callback(file);
-                    fileCount++;
-                } catch (error) {
-                    logger.error('Error processing file %s: %s\n\n%s\n\n', file, error, (error as Error).stack);
-                }
-            }, { pattern: filePattern });
-
-            logger.info('Processed %d files', fileCount);
-
+            return input.process(callback);
         }
 
         const constructFilename = async (createDate: Date, type: string, hash: string, context?: { subject?: string }): Promise<string> => {
@@ -132,77 +113,42 @@ export const create = (options: CabazookaOptions): Cabazooka => {
 
     }
 
+    const applyDefaults = (config: Config): Config => {
+        const configWithDefaults = {
+            ...config,
+        }
+
+        if (options.isFeatureEnabled('input')) {
+            configWithDefaults.recursive = config.recursive === undefined ? DEFAULT_RECURSIVE : config.recursive;
+            configWithDefaults.inputDirectory = config.inputDirectory || (options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY);
+        }
+        if (options.isFeatureEnabled('output')) {
+            configWithDefaults.outputDirectory = config.outputDirectory || (options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY);
+        }
+        if (options.isFeatureEnabled('structured-output')) {
+            configWithDefaults.outputStructure = config.outputStructure || (options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE);
+            configWithDefaults.outputFilenameOptions = config.outputFilenameOptions || (options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS);
+        }
+        if (options.isFeatureEnabled('extensions')) {
+            configWithDefaults.extensions = config.extensions || (options.defaults?.extensions || DEFAULT_EXTENSIONS);
+        }
+
+        if (options.isFeatureEnabled('structured-input')) {
+            configWithDefaults.inputStructure = config.inputStructure || (options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE);
+            configWithDefaults.inputFilenameOptions = config.inputFilenameOptions || (options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS);
+        }
+
+        return configWithDefaults;
+    }
+
     return {
         setLogger,
         configure,
         validate,
         operate,
+        applyDefaults,
     }
 }
-
-const run = async (args: string[]): Promise<void> => {
-
-    const logger: typeof console = console;
-
-    const features: Options.Feature[] = ['input', 'output', 'structured-output', 'extensions', 'structured-input'];
-    const options = Options.createOptions({ features });
-
-    const argumentHandler = Arguments.create(options);
-
-    const command = new Command();
-    command
-        .version(Constants.VERSION, '-v, --version', 'output the current version')
-        .description("Organizes files based on date and subject.")
-        .usage('[options]');
-
-    await argumentHandler.configure(command);
-
-    command.parse(args);
-    const input: Input = command.opts();
-
-    try {
-        const config = await argumentHandler.validate(input);
-        logger.log('Configuration validated:', config);
-
-        // Process files
-        if (config.inputDirectory && options.isFeatureEnabled('input')) {
-            const cabazookaInstance = create(options);
-            // If a proper Logger (e.g., Winston) is available, set it here:
-            // cabazookaInstance.setLogger(myWinstonLogger);
-            const operator = await cabazookaInstance.operate(config);
-
-            // Example callback - replace with actual file processing logic
-            const processFileCallback = async (file: string) => {
-                logger.debug(`Processing file via callback: ${file}`);
-                // TODO: Implement actual file processing/moving/renaming logic here
-                // Example: Get new filename/directory
-                // const createDate = new Date(); // Replace with actual date extraction
-                // const newFilename = await operator.constructFilename(createDate, 'txt', 'hash');
-                // const newDir = await operator.constructOutputDirectory(createDate);
-                // await storage.moveFile(file, storage.joinPath(newDir, newFilename));
-            };
-
-            await operator.process(processFileCallback);
-            logger.log(`Processing complete.`); // Count is logged within operator.process
-        } else {
-            logger.log('Input directory not configured or input feature disabled, skipping file processing.');
-        }
-
-    } catch (error: unknown) {
-        if (error instanceof ArgumentError) {
-            logger.error(`Argument Error: ${error.message}`);
-        } else if (error instanceof Error) {
-            logger.error(`An unexpected error occurred: ${error.message}\nStack: ${error.stack}`);
-        } else {
-            logger.error('An unknown error occurred:', error);
-        }
-        // process.exit(1);
-    }
-}
-
-// Export the run function for testing or external use
-export { run };
-
 
 
 

@@ -1,4 +1,4 @@
-import { FilenameOption, OutputStructure } from 'options';
+import { FilenameOption, FilesystemStructure } from 'options';
 
 export const VERSION = '__VERSION__ (__GIT_BRANCH__/__GIT_COMMIT__ __GIT_TAGS__ __GIT_COMMIT_DATE__) __SYSTEM_INFO__';
 export const PROGRAM_NAME = 'cabazooka';
@@ -26,13 +26,15 @@ export const DEFAULT_RECURSIVE = false;
 export const DEFAULT_INPUT_DIRECTORY = './';
 export const DEFAULT_OUTPUT_DIRECTORY = './';
 
-export const DEFAULT_OUTPUT_STRUCTURE = 'month' as OutputStructure;
+export const DEFAULT_OUTPUT_STRUCTURE = 'month' as FilesystemStructure;
 export const DEFAULT_OUTPUT_FILENAME_OPTIONS = ['date', 'subject'] as FilenameOption[];
-export const DEFAULT_INPUT_STRUCTURE = 'month' as OutputStructure;
+export const DEFAULT_INPUT_STRUCTURE = 'month' as FilesystemStructure;
 export const DEFAULT_INPUT_FILENAME_OPTIONS = ['date', 'subject'] as FilenameOption[];
 export const DEFAULT_EXTENSIONS = ['md'] as string[];
 
-export const ALLOWED_OUTPUT_STRUCTURES = ['none', 'year', 'month', 'day'] as OutputStructure[];
+export const ALLOWED_INPUT_STRUCTURES = ['none', 'year', 'month', 'day'] as FilesystemStructure[];
+export const ALLOWED_INPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as FilenameOption[];
+export const ALLOWED_OUTPUT_STRUCTURES = ['none', 'year', 'month', 'day'] as FilesystemStructure[];
 export const ALLOWED_OUTPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as FilenameOption[];
 
 export const ALLOWED_EXTENSIONS = ['md'] as string[];

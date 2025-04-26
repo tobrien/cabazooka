@@ -1,30 +1,32 @@
 import { Command } from "commander";
+import { Args, Config } from "./cabazooka";
 import {
     ALLOWED_EXTENSIONS,
+    ALLOWED_INPUT_FILENAME_OPTIONS,
+    ALLOWED_INPUT_STRUCTURES,
     ALLOWED_OUTPUT_FILENAME_OPTIONS,
     ALLOWED_OUTPUT_STRUCTURES,
+    DATE_FORMAT_YEAR_MONTH_DAY,
     DEFAULT_EXTENSIONS,
-    DEFAULT_INPUT_FILENAME_OPTIONS,
-    DEFAULT_OUTPUT_FILENAME_OPTIONS,
     DEFAULT_INPUT_DIRECTORY,
-    DEFAULT_OUTPUT_DIRECTORY,
+    DEFAULT_INPUT_FILENAME_OPTIONS,
     DEFAULT_INPUT_STRUCTURE,
+    DEFAULT_OUTPUT_DIRECTORY,
+    DEFAULT_OUTPUT_FILENAME_OPTIONS,
     DEFAULT_OUTPUT_STRUCTURE,
     DEFAULT_RECURSIVE,
-    DEFAULT_TIMEZONE,
-    DATE_FORMAT_YEAR_MONTH_DAY
+    DEFAULT_TIMEZONE
 } from "./constants";
 import { ArgumentError } from "./error/ArgumentError";
+import { FilenameOption, FilesystemStructure, Options } from "./options";
 import * as Dates from "./util/dates";
 import * as Storage from "./util/storage";
-import { Config, Input } from "./cabazooka";
-import { FilenameOption, OutputStructure, Options } from "./options";
 
 export { ArgumentError };
 
 export const create = (options: Options): {
     configure: (command: Command) => Promise<Command>;
-    validate: (input: Input) => Promise<Config>;
+    validate: (args: Args) => Promise<Config>;
 } => {
 
     const logger: typeof console = console;
@@ -32,25 +34,25 @@ export const create = (options: Options): {
 
     const configure = async (command: Command): Promise<Command> => {
         let retCommand = command;
-        retCommand = retCommand.option('--timezone <timezone>', 'timezone for date calculations', options.defaults?.timezone || DEFAULT_TIMEZONE)
+        retCommand = retCommand.option('--timezone <timezone>', 'timezone for date calculations', options.addDefaults ? options.defaults?.timezone || DEFAULT_TIMEZONE : undefined)
         if (options.isFeatureEnabled('input')) {
-            retCommand = retCommand.option('-r, --recursive', 'recursive mode, process all files in the input directory', options.defaults?.recursive || DEFAULT_RECURSIVE)
-            retCommand = retCommand.option('-i, --input-directory <inputDirectory>', 'input directory', options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY)
+            retCommand = retCommand.option('-r, --recursive', 'recursive mode, process all files in the input directory', options.addDefaults ? options.defaults?.recursive || DEFAULT_RECURSIVE : undefined)
+            retCommand = retCommand.option('-i, --input-directory <inputDirectory>', 'input directory', options.addDefaults ? options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY : undefined)
         }
         if (options.isFeatureEnabled('output')) {
-            retCommand = retCommand.option('-o, --output-directory <outputDirectory>', 'output directory', options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY)
+            retCommand = retCommand.option('-o, --output-directory <outputDirectory>', 'output directory', options.addDefaults ? options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY : undefined)
         }
         if (options.isFeatureEnabled('structured-output')) {
-            retCommand = retCommand.option('--output-structure <type>', 'output directory structure (none/year/month/day)', options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE)
-            retCommand = retCommand.option('--output-filename-options [outputFilenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS)
+            retCommand = retCommand.option('--output-structure <type>', 'output directory structure (none/year/month/day)', options.addDefaults ? options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE : undefined)
+            retCommand = retCommand.option('--output-filename-options [outputFilenameOptions...]', 'filename format options (space-separated list of: date,time,subject) example \'date subject\'', options.addDefaults ? options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS : undefined)
         }
         if (options.isFeatureEnabled('extensions')) {
-            retCommand = retCommand.option('--extensions [extensions...]', 'file extensions to process (space-separated list of: mp3,mp4,mpeg,mpga,m4a,wav,webm)', options.defaults?.extensions || DEFAULT_EXTENSIONS);
+            retCommand = retCommand.option('--extensions [extensions...]', 'file extensions to process (space-separated list of: mp3,mp4,mpeg,mpga,m4a,wav,webm)', options.addDefaults ? options.defaults?.extensions || DEFAULT_EXTENSIONS : undefined);
         }
 
         if (options.isFeatureEnabled('structured-input')) {
-            retCommand = retCommand.option('--input-structure <type>', 'input directory structure (none/year/month/day)', options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE)
-            retCommand = retCommand.option('--input-filename-options [options...]', 'filename format options (space-separated list of: date,time,subject)', options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS)
+            retCommand = retCommand.option('--input-structure <type>', 'input directory structure (none/year/month/day)', options.addDefaults ? options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE : undefined)
+            retCommand = retCommand.option('--input-filename-options [options...]', 'filename format options (space-separated list of: date,time,subject)', options.addDefaults ? options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS : undefined)
             retCommand = retCommand.option('--start <date>', `start date filter (${DATE_FORMAT_YEAR_MONTH_DAY})`)
             retCommand = retCommand.option('--end <date>', `end date filter (${DATE_FORMAT_YEAR_MONTH_DAY}), defaults to today`)
         }
@@ -58,60 +60,87 @@ export const create = (options: Options): {
         return retCommand;
     }
 
-    const validate = async (input: Input): Promise<Config> => {
+    const validate = async (args: Args): Promise<Config> => {
 
         const config: Partial<Config> = {};
 
         // Validate timezone
-        const timezone: string = validateTimezone(input.timezone);
+        const timezone: string = validateTimezone(args.timezone);
         config.timezone = timezone;
 
-        if (options.isFeatureEnabled('input') && input.inputDirectory) {
-            await validateInputDirectory(input.inputDirectory);
-            config.inputDirectory = input.inputDirectory ?? DEFAULT_INPUT_DIRECTORY;
-            config.recursive = input.recursive ?? DEFAULT_RECURSIVE;
+        if (options.isFeatureEnabled('input') && args.inputDirectory) {
+            await validateInputDirectory(args.inputDirectory);
+            config.inputDirectory = options.addDefaults ? args.inputDirectory ?? DEFAULT_INPUT_DIRECTORY : undefined;
+            config.recursive = options.addDefaults ? args.recursive ?? DEFAULT_RECURSIVE : undefined;
         }
 
-        if (options.isFeatureEnabled('output') && input.outputDirectory) {
-            await validateOutputDirectory(input.outputDirectory);
-            config.outputDirectory = input.outputDirectory ?? DEFAULT_OUTPUT_DIRECTORY;
+        if (options.isFeatureEnabled('output') && args.outputDirectory) {
+            await validateOutputDirectory(args.outputDirectory);
+            config.outputDirectory = options.addDefaults ? args.outputDirectory ?? DEFAULT_OUTPUT_DIRECTORY : undefined;
         }
 
         if (options.isFeatureEnabled('structured-output')) {
             // Validate filename options if provided
-            validateOutputStructure(input.outputStructure);
-            validateOutputFilenameOptions(input.outputFilenameOptions, input.outputStructure as OutputStructure);
-            config.outputStructure = (input.outputStructure ?? DEFAULT_OUTPUT_STRUCTURE) as OutputStructure;
-            config.outputFilenameOptions = (input.outputFilenameOptions ?? DEFAULT_OUTPUT_FILENAME_OPTIONS) as FilenameOption[];
+            validateOutputStructure(args.outputStructure);
+            validateOutputFilenameOptions(args.outputFilenameOptions, args.outputStructure as FilesystemStructure);
+            config.outputStructure = options.addDefaults ? (args.outputStructure ?? DEFAULT_OUTPUT_STRUCTURE) as FilesystemStructure : undefined;
+            config.outputFilenameOptions = options.addDefaults ? (args.outputFilenameOptions ?? DEFAULT_OUTPUT_FILENAME_OPTIONS) as FilenameOption[] : undefined;
         }
 
         if (options.isFeatureEnabled('extensions')) {
-            validateExtensions(input.extensions);
-            config.extensions = input.extensions ?? DEFAULT_EXTENSIONS;
+            validateExtensions(args.extensions);
+            config.extensions = options.addDefaults ? args.extensions ?? DEFAULT_EXTENSIONS : undefined;
         }
 
         // Create date utility after timezone is validated
         const dateUtil = Dates.create({ timezone });
 
         if (options.isFeatureEnabled('structured-input')) {
-            validateInputStructure(input.inputStructure);
-            validateInputFilenameOptions(input.inputFilenameOptions, input.inputStructure as OutputStructure);
-            validateStartEndDates(input.start, input.end, dateUtil);
+            validateInputStructure(args.inputStructure);
+            validateInputFilenameOptions(args.inputFilenameOptions, args.inputStructure as FilesystemStructure);
 
-            config.inputStructure = (input.inputStructure ?? DEFAULT_INPUT_STRUCTURE) as OutputStructure;
-            config.inputFilenameOptions = (input.inputFilenameOptions ?? DEFAULT_INPUT_FILENAME_OPTIONS) as FilenameOption[];
+            // Validate the date strings first
+            validateStartEndDates(args.start, args.end, dateUtil);
 
-            // Parse start date string into Date object
-            config.startDate = input.start ? dateUtil.parse(input.start, DATE_FORMAT_YEAR_MONTH_DAY) : undefined;
+            config.inputStructure = options.addDefaults ? (args.inputStructure ?? DEFAULT_INPUT_STRUCTURE) as FilesystemStructure : undefined;
+            config.inputFilenameOptions = options.addDefaults ? (args.inputFilenameOptions ?? DEFAULT_INPUT_FILENAME_OPTIONS) as FilenameOption[] : undefined;
 
-            // Parse end date string (or today's date if end is undefined) into Date object
-            const endDateString = input.end ?? dateUtil.today();
-            config.endDate = dateUtil.parse(endDateString, DATE_FORMAT_YEAR_MONTH_DAY);
+            // Create DateRange object if start or end dates are relevant
+            // Note: Validation ensures dates are valid and start <= end if both are provided
+            if (args.start || args.end) {
+                let startDate: Date;
+                let endDate: Date;
 
-            // Re-validate after setting default end date (validation uses parsed dates internally)
-            // Note: validateStartEndDates already checks if the parsed dates are valid and in correct order
-            // We just need to pass the original strings (or the generated today string) for validation error messages.
-            validateStartEndDates(input.start, endDateString, dateUtil);
+                // Handle end date
+                if (args.end) {
+                    endDate = dateUtil.parse(args.end, DATE_FORMAT_YEAR_MONTH_DAY);
+                } else {
+                    // If only start is provided, end defaults to today
+                    endDate = dateUtil.now();
+                }
+
+                // Handle start date
+                if (args.start) {
+                    startDate = dateUtil.parse(args.start, DATE_FORMAT_YEAR_MONTH_DAY);
+                } else {
+                    // If only end is provided, start defaults to 31 days before end
+                    // (This mirrors the logic from crudzap, adjust if needed)
+                    startDate = dateUtil.subDays(endDate, 31);
+                }
+
+                // We re-check the order here after defaults might have been applied,
+                // although validateStartEndDates should catch explicit invalid orders.
+                if (dateUtil.isBefore(endDate, startDate)) {
+                    // This case should theoretically not be reachable due to prior validation
+                    // but is kept as a safeguard.
+                    throw new ArgumentError('--start', `Start date (${dateUtil.format(startDate, DATE_FORMAT_YEAR_MONTH_DAY)}) cannot be after end date (${dateUtil.format(endDate, DATE_FORMAT_YEAR_MONTH_DAY)}).`);
+                }
+
+                config.dateRange = {
+                    start: startDate!,
+                    end: endDate!
+                };
+            }
         }
 
         return config as Config;
@@ -133,13 +162,13 @@ export const create = (options: Options): {
     }
 
     const validateOutputStructure = (outputStructure: string | undefined): void => {
-        const validOptions: OutputStructure[] = options.allowed?.outputStructures || ALLOWED_OUTPUT_STRUCTURES;
-        if (outputStructure && !validOptions.includes(outputStructure as OutputStructure)) {
+        const validOptions: FilesystemStructure[] = options.allowed?.outputStructures || ALLOWED_OUTPUT_STRUCTURES;
+        if (outputStructure && !validOptions.includes(outputStructure as FilesystemStructure)) {
             throw new ArgumentError('--output-structure', `Invalid output structure: ${outputStructure}. Valid options are: ${validOptions.join(', ')}`);
         }
     }
 
-    const validateOutputFilenameOptions = (outputFilenameOptions: string[] | undefined, outputStructure: OutputStructure | undefined): void => {
+    const validateOutputFilenameOptions = (outputFilenameOptions: string[] | undefined, outputStructure: FilesystemStructure | undefined): void => {
         if (outputFilenameOptions) {
             // Check if first argument contains commas - likely a comma-separated list
             if (outputFilenameOptions[0].includes(',')) {
@@ -166,13 +195,13 @@ export const create = (options: Options): {
     }
 
     const validateInputStructure = (inputStructure: string | undefined): void => {
-        const validOptions: OutputStructure[] = options.allowed?.outputStructures || ALLOWED_OUTPUT_STRUCTURES;
-        if (inputStructure && !validOptions.includes(inputStructure as OutputStructure)) {
+        const validOptions: FilesystemStructure[] = options.allowed?.inputStructures || ALLOWED_INPUT_STRUCTURES;
+        if (inputStructure && !validOptions.includes(inputStructure as FilesystemStructure)) {
             throw new ArgumentError('--input-structure', `Invalid input structure: ${inputStructure}. Valid options are: ${validOptions.join(', ')}`);
         }
     }
 
-    const validateInputFilenameOptions = (inputFilenameOptions: string[] | undefined, inputStructure: OutputStructure | undefined): void => {
+    const validateInputFilenameOptions = (inputFilenameOptions: string[] | undefined, inputStructure: FilesystemStructure | undefined): void => {
         if (inputFilenameOptions) {
             // Check if first argument contains commas - likely a comma-separated list
             if (inputFilenameOptions[0].includes(',')) {
@@ -183,7 +212,7 @@ export const create = (options: Options): {
             if (inputFilenameOptions.length === 1 && inputFilenameOptions[0].split(' ').length > 1) {
                 throw new ArgumentError('--input-filename-options', 'Filename options should not be quoted. Use: --input-filename-options date time subject instead of --input-filename-options "date time subject"');
             }
-            const validOptions = options.allowed?.outputFilenameOptions || ALLOWED_OUTPUT_FILENAME_OPTIONS;
+            const validOptions = options.allowed?.inputFilenameOptions || ALLOWED_INPUT_FILENAME_OPTIONS;
             const invalidOptions = inputFilenameOptions.filter(opt => !validOptions.includes(opt as FilenameOption));
             if (invalidOptions.length > 0) {
                 throw new ArgumentError('--input-filename-options', `Invalid filename options: ${invalidOptions.join(', ')}. Valid options are: ${validOptions.join(', ')}`);
