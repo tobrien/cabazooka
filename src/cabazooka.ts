@@ -85,21 +85,21 @@ export const create = (options: CabazookaOptions): Cabazooka => {
         const input = Input.create(config, options, logger);
 
         const process = async (callback: (file: string) => Promise<void>) => {
-            if (!options.isFeatureEnabled('input')) {
+            if (!options.features.includes('input')) {
                 throw new Error('Input feature is not enabled, skipping input processing');
             }
             return input.process(callback);
         }
 
         const constructFilename = async (createDate: Date, type: string, hash: string, context?: { subject?: string }): Promise<string> => {
-            if (!options.isFeatureEnabled('output')) {
+            if (!options.features.includes('output')) {
                 throw new Error('Output feature is not enabled, skipping output construction');
             }
             return output.constructFilename(createDate, type, hash, context);
         }
 
         const constructOutputDirectory = async (createDate: Date): Promise<string> => {
-            if (!options.isFeatureEnabled('output')) {
+            if (!options.features.includes('output')) {
                 throw new Error('Output feature is not enabled, skipping output construction');
             }
             return output.constructOutputDirectory(createDate);
@@ -118,22 +118,22 @@ export const create = (options: CabazookaOptions): Cabazooka => {
             ...config,
         }
 
-        if (options.isFeatureEnabled('input')) {
+        if (options.features.includes('input')) {
             configWithDefaults.recursive = config.recursive === undefined ? DEFAULT_RECURSIVE : config.recursive;
             configWithDefaults.inputDirectory = config.inputDirectory || (options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY);
         }
-        if (options.isFeatureEnabled('output')) {
+        if (options.features.includes('output')) {
             configWithDefaults.outputDirectory = config.outputDirectory || (options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY);
         }
-        if (options.isFeatureEnabled('structured-output')) {
+        if (options.features.includes('structured-output')) {
             configWithDefaults.outputStructure = config.outputStructure || (options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE);
             configWithDefaults.outputFilenameOptions = config.outputFilenameOptions || (options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS);
         }
-        if (options.isFeatureEnabled('extensions')) {
+        if (options.features.includes('extensions')) {
             configWithDefaults.extensions = config.extensions || (options.defaults?.extensions || DEFAULT_EXTENSIONS);
         }
 
-        if (options.isFeatureEnabled('structured-input')) {
+        if (options.features.includes('structured-input')) {
             configWithDefaults.inputStructure = config.inputStructure || (options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE);
             configWithDefaults.inputFilenameOptions = config.inputFilenameOptions || (options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS);
         }

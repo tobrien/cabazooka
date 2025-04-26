@@ -46,7 +46,6 @@ export interface Options {
     defaults?: DefaultOptions,
     allowed?: AllowedOptions,
     features: Feature[],
-    isFeatureEnabled: (feature: Feature) => boolean;
     addDefaults: boolean;
 }
 
@@ -93,12 +92,7 @@ export const createOptions = (
         ...options,
     }
 
-    const isFeatureEnabled = (feature: Feature) => {
-        return mergedOptions.features?.includes(feature) ?? false;
-    }
-
     return {
         ...mergedOptions,
-        isFeatureEnabled,
     } as Options;
 }

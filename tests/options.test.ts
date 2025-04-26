@@ -11,14 +11,16 @@ describe('options', () => {
     });
 
     describe('create', () => {
-        it('should create options with default values when no parameters provided', () => {
+        it('should create options with default values', () => {
             const options = Options.createOptions();
-
+            expect(options.defaults).toEqual(Options.DEFAULT_APP_OPTIONS);
             expect(options.allowed).toEqual(Options.DEFAULT_ALLOWED_OPTIONS);
-            expect(options.isFeatureEnabled('output')).toBe(true);
-            expect(options.isFeatureEnabled('structured-output')).toBe(true);
-            expect(options.isFeatureEnabled('input')).toBe(true);
-            expect(options.isFeatureEnabled('extensions')).toBe(true);
+            expect(options.features).toEqual(Options.DEFAULT_FEATURES);
+            expect(options.addDefaults).toBe(true);
+            expect(options.features).toContain('output');
+            expect(options.features).toContain('structured-output');
+            expect(options.features).toContain('input');
+            expect(options.features).toContain('extensions');
         });
 
         it('should create options with custom default values', () => {
@@ -36,7 +38,6 @@ describe('options', () => {
 
             expect(options.defaults).toEqual(customDefaults);
             expect(options.allowed).toEqual(Options.DEFAULT_ALLOWED_OPTIONS);
-            expect(options.isFeatureEnabled('output')).toBe(true);
         });
 
         it('should create options with custom allowed options', () => {
@@ -57,10 +58,6 @@ describe('options', () => {
             const options = Options.createOptions({ features: customFeatures });
 
             expect(options.allowed).toEqual(Options.DEFAULT_ALLOWED_OPTIONS);
-            expect(options.isFeatureEnabled('input')).toBe(true);
-            expect(options.isFeatureEnabled('extensions')).toBe(true);
-            expect(options.isFeatureEnabled('output')).toBe(false);
-            expect(options.isFeatureEnabled('structured-output')).toBe(false);
         });
 
         it('should create options with all custom parameters', () => {
@@ -84,29 +81,83 @@ describe('options', () => {
 
             expect(options.defaults).toEqual(customDefaults);
             expect(options.allowed).toEqual(customAllowed);
-            expect(options.isFeatureEnabled('output')).toBe(true);
-            expect(options.isFeatureEnabled('input')).toBe(false);
-            expect(options.isFeatureEnabled('extensions')).toBe(false);
-            expect(options.isFeatureEnabled('structured-output')).toBe(false);
+        });
+
+        it('should override default options', () => {
+            const options = Options.createOptions({
+                defaults: {
+                    timezone: 'UTC',
+                    inputDirectory: '/custom/input',
+                    extensions: ['.txt']
+                },
+                allowed: {
+                    outputStructures: ['year'],
+                    outputFilenameOptions: ['date'],
+                    extensions: ['.txt']
+                },
+                features: ['output'],
+                addDefaults: false
+            });
+
+            expect(options.defaults?.timezone).toBe('UTC');
+            expect(options.defaults?.inputDirectory).toBe('/custom/input');
+            expect(options.allowed?.extensions).toEqual(['.txt']);
+            expect(options.features).toEqual(['output']);
+            expect(options.addDefaults).toBe(false);
+
+            expect(options.features).toContain('output');
+            expect(options.features).not.toContain('structured-output');
+            expect(options.features).not.toContain('input');
+            expect(options.features).not.toContain('extensions');
+        });
+
+        it('should merge features correctly', () => {
+            const customOptions = {
+                features: ['input', 'extensions'] as Feature[],
+            };
+            const options = Options.createOptions(customOptions);
+            expect(options.features).toEqual(['input', 'extensions']);
+            expect(options.features).toContain('input');
+            expect(options.features).toContain('extensions');
+            expect(options.features).not.toContain('output');
+            expect(options.features).not.toContain('structured-output');
+        });
+
+        it('should handle empty custom options', () => {
+            const options = Options.createOptions({});
+            expect(options.defaults).toEqual(Options.DEFAULT_APP_OPTIONS);
+            expect(options.allowed).toEqual(Options.DEFAULT_ALLOWED_OPTIONS);
+            expect(options.features).toEqual(Options.DEFAULT_FEATURES);
+            expect(options.addDefaults).toBe(true);
+            expect(options.features).toContain('output');
+            expect(options.features).toContain('input');
+            expect(options.features).toContain('extensions');
+            expect(options.features).toContain('structured-output');
         });
     });
 
-    describe('isFeatureEnabled', () => {
-        it('should correctly determine if a feature is enabled', () => {
-            const features: Feature[] = ['input', 'output'];
-            const options = Options.createOptions({ features });
-
-            expect(options.isFeatureEnabled('input')).toBe(true);
-            expect(options.isFeatureEnabled('output')).toBe(true);
-            expect(options.isFeatureEnabled('extensions')).toBe(false);
-            expect(options.isFeatureEnabled('structured-output')).toBe(false);
+    describe('feature checks', () => {
+        it('should correctly report enabled/disabled features based on defaults', () => {
+            const options = Options.createOptions();
+            expect(options.features).toContain('input');
+            expect(options.features).toContain('output');
+            expect(options.features).toContain('extensions');
+            expect(options.features).toContain('structured-output');
+            expect(options.features).not.toContain('structured-input');
         });
 
-        it('should return false for unknown features', () => {
-            const options = Options.createOptions();
+        it('should correctly report enabled/disabled features based on custom settings', () => {
+            const options = Options.createOptions({ features: ['output', 'structured-input'] });
+            expect(options.features).not.toContain('input');
+            expect(options.features).toContain('output');
+            expect(options.features).not.toContain('extensions');
+            expect(options.features).not.toContain('structured-output');
+            expect(options.features).toContain('structured-input');
+        });
 
-            // @ts-ignore - Testing invalid feature
-            expect(options.isFeatureEnabled('unknown-feature')).toBe(false);
+        it('should report false for unknown features', () => {
+            const options = Options.createOptions();
+            expect(options.features).not.toContain('unknown-feature' as Feature);
         });
     });
 });

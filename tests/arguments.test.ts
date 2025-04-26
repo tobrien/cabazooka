@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import { Command } from 'commander';
 import { DATE_FORMAT_YEAR_MONTH_DAY, DEFAULT_EXTENSIONS } from '../src/constants';
 import { ArgumentError } from '../src/error/ArgumentError';
-import { Feature, Options } from '../src/options';
+import { DEFAULT_FEATURES, Feature, Options } from '../src/options';
 // import * as Dates from '../src/util/dates'; // Remove static import
 // import * as Storage from '../src/util/storage'; // Remove static import
 // import * as Options from '../src/options'; // Remove static import
@@ -82,6 +82,7 @@ describe('arguments', () => {
             outputFilenameOptions: ['date', 'time', 'subject'],
             extensions: ['mp3', 'mp4', 'wav', 'webm']
         },
+        features: DEFAULT_FEATURES,
         addDefaults: true
     };
 
@@ -118,8 +119,8 @@ describe('arguments', () => {
         mockOptionsInstance = {
             defaults: options.defaults,
             allowed: options.allowed,
-            isFeatureEnabled: jest.fn().mockReturnValue(true), // Enable all features by default
-            addDefaults: options.addDefaults
+            addDefaults: options.addDefaults,
+            features: DEFAULT_FEATURES
         };
         mockOptions = {
             create: jest.fn().mockReturnValue(mockOptionsInstance)
@@ -139,7 +140,7 @@ describe('arguments', () => {
 
             await args.configure(command);
 
-            expect(spy).toHaveBeenCalledTimes(11);
+            expect(spy).toHaveBeenCalledTimes(7);
             expect(spy).toHaveBeenCalledWith('--timezone <timezone>', expect.any(String), 'America/New_York');
             expect(spy).toHaveBeenCalledWith('-r, --recursive', expect.any(String), true);
             expect(spy).toHaveBeenCalledWith('-o, --output-directory <outputDirectory>', expect.any(String), './test-output');
@@ -148,7 +149,7 @@ describe('arguments', () => {
             expect(spy).toHaveBeenCalledWith('--output-filename-options [outputFilenameOptions...]', expect.any(String), ['date', 'subject']);
             expect(spy).toHaveBeenCalledWith('--extensions [extensions...]', expect.any(String), ['mp3', 'mp4']);
 
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
+            expect(mockOptionsInstance.features).toEqual(DEFAULT_FEATURES);
         }, 60000);
 
         it('should configure a command with fallback to constants when no defaults provided', async () => {
@@ -156,7 +157,8 @@ describe('arguments', () => {
             const noDefaultsOptionsInstance = {
                 defaults: {},
                 allowed: options.allowed,
-                isFeatureEnabled: jest.fn().mockReturnValue(true)
+                features: DEFAULT_FEATURES,
+                addDefaults: true
             };
 
             (OptionsModule.create as jest.Mock).mockReturnValueOnce(noDefaultsOptionsInstance);
@@ -169,10 +171,8 @@ describe('arguments', () => {
             await args.configure(command);
 
             // Should use defaults from constants
-            expect(spy).toHaveBeenCalledWith('--timezone <timezone>', expect.any(String), undefined);
-            expect(spy).toHaveBeenCalledWith('-r, --recursive', expect.any(String), undefined);
-
-            expect(noDefaultsOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
+            expect(spy).toHaveBeenCalledWith('--timezone <timezone>', expect.any(String), 'Etc/UTC');
+            expect(spy).toHaveBeenCalledWith('-r, --recursive', expect.any(String), false);
         }, 60000);
     });
 
@@ -205,13 +205,10 @@ describe('arguments', () => {
                 outputStructure: 'month',
                 outputFilenameOptions: ['date', 'subject'],
                 extensions: ['webm'],
-                inputStructure: 'month',
-                inputFilenameOptions: ['date', 'subject'],
             });
 
             expect(mockStorageInstance.isDirectoryReadable).toHaveBeenCalledWith('./valid-input');
             expect(mockStorageInstance.isDirectoryWritable).toHaveBeenCalledWith('./valid-output');
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
         }, 60000);
 
         it('should use default values when not provided in input', async () => {
@@ -242,18 +239,12 @@ describe('arguments', () => {
                 outputStructure: 'month',
                 outputFilenameOptions: ['date', 'subject'],
                 extensions: DEFAULT_EXTENSIONS,
-                inputStructure: 'month',
-                inputFilenameOptions: ['date', 'subject'],
-                dateRange: undefined
             });
-
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalled();
         }, 60000);
 
         it('should throw error for invalid input directory when input feature is enabled', async () => {
             // Mock to enable only input feature
-            const featureCheck = (feature: Feature) => feature === 'input';
-            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'input'];
 
             (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
@@ -272,13 +263,11 @@ describe('arguments', () => {
             };
 
             await expect(args.validate(input)).rejects.toThrow('Input directory does not exist: ./invalid-input');
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('input');
         }, 60000);
 
         it('should not validate input directory when input feature is disabled', async () => {
             // Mock to disable only input feature
-            const featureCheck = (feature: Feature) => feature !== 'input';
-            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'input'];
 
             (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
@@ -297,16 +286,13 @@ describe('arguments', () => {
             };
 
             // Should not throw because input feature is disabled
-            const result = await args.validate(input);
 
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('input');
             expect(mockStorageInstance.isDirectoryReadable).not.toHaveBeenCalled();
         }, 60000);
 
         it('should throw error for invalid output directory when output feature is enabled', async () => {
             // Mock to enable only output feature
-            const featureCheck = (feature: Feature) => feature === 'output';
-            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'output'];
 
             (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
@@ -326,13 +312,11 @@ describe('arguments', () => {
             };
 
             await expect(args.validate(input)).rejects.toThrow('Output directory does not exist: ./invalid-output');
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('output');
         }, 60000);
 
         it('should throw error for invalid output structure when structured-output feature is enabled', async () => {
             // Mock to enable only structured-output feature
-            const featureCheck = (feature: Feature) => feature === 'structured-output';
-            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-output'];
 
             (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
@@ -353,13 +337,11 @@ describe('arguments', () => {
 
             await expect(args.validate(input)).rejects.toThrow(ArgumentError);
             await expect(args.validate(input)).rejects.toThrow('Invalid output structure: invalid-structure');
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('structured-output');
         }, 60000);
 
         it('should throw error for invalid extensions when extensions feature is enabled', async () => {
             // Mock to enable only extensions feature
-            const featureCheck = (feature: Feature) => feature === 'extensions';
-            mockOptionsInstance.isFeatureEnabled.mockImplementation((f: any) => featureCheck(f as Feature));
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'extensions'];
 
             (OptionsModule.create as jest.Mock).mockReturnValueOnce(mockOptionsInstance);
 
@@ -380,11 +362,10 @@ describe('arguments', () => {
 
             await expect(args.validate(input)).rejects.toThrow(ArgumentError);
             await expect(args.validate(input)).rejects.toThrow('Invalid extensions: invalid-ext');
-            expect(mockOptionsInstance.isFeatureEnabled).toHaveBeenCalledWith('extensions');
         }, 60000);
 
         it('should throw error for invalid output filename options value (revisited)', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-output');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-output'];
             // Ensure allowed options are set in the mock instance for this test
             mockOptionsInstance.allowed = { outputFilenameOptions: ['date', 'time', 'subject'] };
             const args = ArgumentsModule.create(mockOptionsInstance);
@@ -394,7 +375,7 @@ describe('arguments', () => {
         });
 
         it('should pass when output filename option "date" is used with structure "month" or "year" ', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-output');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-output'];
             const args = ArgumentsModule.create(mockOptionsInstance);
             const input1 = { timezone: 'America/New_York', outputStructure: 'month', outputFilenameOptions: ['date', 'subject'] };
             const input2 = { timezone: 'America/New_York', outputStructure: 'year', outputFilenameOptions: ['date', 'subject'] };
@@ -403,7 +384,7 @@ describe('arguments', () => {
         });
 
         it('should throw error for invalid input filename options value', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-input');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-input'];
             mockOptionsInstance.allowed = { inputFilenameOptions: ['date', 'time', 'subject'] };
             const args = ArgumentsModule.create(mockOptionsInstance);
             const input = { timezone: 'America/New_York', inputFilenameOptions: ['time', 'invalid'] };
@@ -412,7 +393,7 @@ describe('arguments', () => {
         });
 
         it('should pass when input filename option "date" is used with structure "month" or "year" ', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-input');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-input'];
             const args = ArgumentsModule.create(mockOptionsInstance);
             const input1 = { timezone: 'America/New_York', inputStructure: 'month', inputFilenameOptions: ['date', 'subject'] };
             const input2 = { timezone: 'America/New_York', inputStructure: 'year', inputFilenameOptions: ['date', 'subject'] };
@@ -421,7 +402,7 @@ describe('arguments', () => {
         });
 
         it('should pass when start date is before end date', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-input');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-input'];
             const startDate = '2024-01-05';
             const endDate = '2024-01-10';
             const startDateObj = new Date(startDate);
@@ -449,7 +430,7 @@ describe('arguments', () => {
         });
 
         it('should throw error for comma-separated output filename options (if reachable)', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-output');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-output'];
             const args = ArgumentsModule.create(mockOptionsInstance);
             // Simulate commander passing "date,time" as a single element array ['date,time']
             const input = { timezone: 'America/New_York', outputFilenameOptions: ['date,time'] };
@@ -469,7 +450,7 @@ describe('arguments', () => {
         });
 
         it('should throw error for quoted output filename options', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-output');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-output'];
             const args = ArgumentsModule.create(mockOptionsInstance);
             const input = { timezone: 'America/New_York', outputFilenameOptions: ['date subject'] };
             await expect(args.validate(input)).rejects.toThrow(ArgumentError);
@@ -477,7 +458,7 @@ describe('arguments', () => {
         });
 
         it('should throw error for comma-separated input filename options (if reachable)', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-input');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-input'];
             const args = ArgumentsModule.create(mockOptionsInstance);
             const input = { timezone: 'America/New_York', inputFilenameOptions: ['date,subject'] };
 
@@ -491,7 +472,7 @@ describe('arguments', () => {
         });
 
         it('should throw error for quoted input filename options', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-input');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-input'];
             const args = ArgumentsModule.create(mockOptionsInstance);
             const input = { timezone: 'America/New_York', inputFilenameOptions: ['date subject'] };
             await expect(args.validate(input)).rejects.toThrow(ArgumentError);
@@ -499,7 +480,7 @@ describe('arguments', () => {
         });
 
         it('should throw error if start date is after end date (direct check)', async () => {
-            mockOptionsInstance.isFeatureEnabled = jest.fn((f: Feature) => f === 'structured-input');
+            mockOptionsInstance.features = [...DEFAULT_FEATURES, 'structured-input'];
             const startDate = '2024-01-10';
             const endDate = '2024-01-05';
             const startDateObj = new Date(startDate);

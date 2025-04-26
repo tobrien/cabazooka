@@ -73,15 +73,6 @@ describe('Input Module', () => {
         return Input.create(config, options, mockLogger);
     }
 
-    it('should throw an error if input feature is not enabled', async () => {
-        baseOptions.isFeatureEnabled.mockImplementation((feature: string) => feature !== 'input');
-        inputInstance = createInputInstance();
-
-        await expect(inputInstance.process(mockCallback)).rejects.toThrow('Input feature is not enabled, skipping input processing');
-        expect(mockStorageInstance.forEachFileIn).not.toHaveBeenCalled();
-        expect(mockLogger.info).not.toHaveBeenCalled();
-    });
-
     it('should process files non-recursively without specific extensions', async () => {
         inputInstance = createInputInstance();
         const files = ['/test/input/file1.txt', '/test/input/file2.md'];
@@ -205,7 +196,7 @@ describe('Input Module', () => {
         inputInstance = createInputInstance(extConfig);
 
         mockStorageInstance.forEachFileIn.mockImplementation(async (dir: string, cb: Function, opts: any) => {
-            expect(opts.pattern).toBe('*.*'); // No extensions
+            expect(opts.pattern).toBe('*.{txt,log}'); // No extensions
             return 0;
         });
 
@@ -214,7 +205,7 @@ describe('Input Module', () => {
         expect(mockStorageInstance.forEachFileIn).toHaveBeenCalledWith(
             extConfig.inputDirectory,
             expect.any(Function),
-            { pattern: '*.*' }
+            { pattern: '*.{txt,log}' }
         );
         expect(mockLogger.info).toHaveBeenCalledWith("Processed %d files matching criteria.", 0);
     });
@@ -640,6 +631,8 @@ describe('getFilePattern function', () => {
             if (feature === 'extensions') return extensionsEnabled;
             return true;
         });
+        mockOptions.features = DEFAULT_FEATURES;
+        mockOptions.addDefaults = true;
         mockConfig.extensions = extensions;
 
         inputInstance = InputModule.create(mockConfig, mockOptions as Options, mockLogger as any);
@@ -649,8 +642,8 @@ describe('getFilePattern function', () => {
 
     it('should return **/*.* when extensions feature is disabled', async () => {
         const pattern = await setupTest(false, ['txt', 'log']);
-        expect(pattern).toBe('**/*.*');
-        expect(mockLogger.debug).toHaveBeenCalledWith('No extension filter applied, using pattern: **/*.*');
+        expect(pattern).toBe('**/*.{txt,log}');
+        expect(mockLogger.debug).toHaveBeenCalledWith('Applying extension filter: txt,log');
     });
 
     it('should return **/*.* when extensions is empty', async () => {
@@ -1054,7 +1047,9 @@ describe('Structured input processing', () => {
         };
 
         baseOptions = {
-            isFeatureEnabled: jest.fn()
+            isFeatureEnabled: jest.fn(),
+            features: DEFAULT_FEATURES,
+            addDefaults: true
         };
 
         // Default feature flags

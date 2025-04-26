@@ -152,7 +152,7 @@ export const create = (config: Config, options: Options, logger: Logger | typeof
     // Get the appropriate file pattern based on config and options
     const getFilePattern = (): string => {
         let pattern = '**/*'; // Start with a broad pattern for recursive search
-        if (options.isFeatureEnabled('extensions') && config.extensions && config.extensions.length > 0) {
+        if (options.features.includes('extensions') && config.extensions && config.extensions.length > 0) {
             if (config.extensions.length === 1) {
                 pattern = `**/*.${config.extensions[0]}`;
             } else {
@@ -300,7 +300,7 @@ export const create = (config: Config, options: Options, logger: Logger | typeof
         let fileCount = 0;
         let filePattern = `${config.recursive ? '**/' : ''}*`;
 
-        if (options.isFeatureEnabled('extensions') && config.extensions && config.extensions.length > 0) {
+        if (options.features.includes('extensions') && config.extensions && config.extensions.length > 0) {
             // Ensure the pattern correctly handles extensions with or without recursion
             if (config.recursive) {
                 filePattern = `**/*.{${config.extensions.join(',')}}`;
@@ -336,7 +336,7 @@ export const create = (config: Config, options: Options, logger: Logger | typeof
 
     // Main process function
     const process = async (callback: ProcessCallback) => {
-        if (!options.isFeatureEnabled('input')) {
+        if (!options.features.includes('input')) {
             throw new Error('Input feature is not enabled, skipping input processing');
         }
 
@@ -347,7 +347,7 @@ export const create = (config: Config, options: Options, logger: Logger | typeof
 
         let fileCount = 0;
 
-        if (options.isFeatureEnabled('structured-input')) {
+        if (options.features.includes('structured-input')) {
             logger.debug('Processing Structured Input from %s', inputDirectory);
 
             const startDateRange = config.dateRange?.start ? new Date(config.dateRange.start) : null;
