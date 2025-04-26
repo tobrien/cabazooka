@@ -25,7 +25,7 @@ const parseDateFromString = (
         let mi = 0; // Default to 0
 
         // Remove potential leading/trailing non-alphanumeric if needed, split by common separators
-        const cleanedDateStr = dateStr.replace(/[^\p{L}\p{N}]*(.*?)[^\p{L}\p{N}]*$/u, '$1');
+        const cleanedDateStr = dateStr.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
         const parts = cleanedDateStr.split(/[-_]/); // Allow dash or underscore
 
         switch (format) {
