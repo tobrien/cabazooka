@@ -13,7 +13,7 @@ import * as Output from './output';
 export * from './options';
 
 export interface Cabazooka {
-    configure: (command: Command) => Promise<Command>;
+    configure: (command: Command) => Promise<void>;
     setLogger: (logger: Logger) => void;
     validate: (args: Args) => Promise<Config>;
     applyDefaults: (config: Config) => Config;
@@ -83,8 +83,8 @@ export const create = (
         logger = pLogger;
     }
 
-    const configure = (command: Command): Promise<Command> => {
-        return argumentsInstance.configure(command);
+    const configure = async (command: Command): Promise<void> => {
+        await argumentsInstance.configure(command);
     }
 
     const validate = async (args: Args): Promise<Config> => {
