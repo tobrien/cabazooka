@@ -47,6 +47,16 @@ export interface Options {
     allowed?: AllowedOptions,
     features: Feature[],
     addDefaults: boolean;
+    logger: Logger;
+}
+
+export interface Logger {
+    debug: (message: string, ...args: any[]) => void;
+    info: (message: string, ...args: any[]) => void;
+    warn: (message: string, ...args: any[]) => void;
+    error: (message: string, ...args: any[]) => void;
+    verbose: (message: string, ...args: any[]) => void;
+    silly: (message: string, ...args: any[]) => void;
 }
 
 export const DEFAULT_APP_OPTIONS: DefaultOptions = {
@@ -71,9 +81,26 @@ export const DEFAULT_ALLOWED_OPTIONS: AllowedOptions = {
 
 export const DEFAULT_FEATURES: Feature[] = ['output', 'structured-output', 'input', 'extensions'];
 
+export const DEFAULT_LOGGER: Logger = {
+    // eslint-disable-next-line no-console
+    debug: (message: string, ...args: any[]) => console.debug(message, ...args),
+    // eslint-disable-next-line no-console
+    info: (message: string, ...args: any[]) => console.info(message, ...args),
+    // eslint-disable-next-line no-console
+    warn: (message: string, ...args: any[]) => console.warn(message, ...args),
+    // eslint-disable-next-line no-console
+    error: (message: string, ...args: any[]) => console.error(message, ...args),
+    // eslint-disable-next-line no-console
+    verbose: (message: string, ...args: any[]) => console.log(message, ...args),
+    // eslint-disable-next-line no-console
+    silly: (message: string, ...args: any[]) => console.log(message, ...args),
+}
+
 export const DEFAULT_OPTIONS = {
     defaults: DEFAULT_APP_OPTIONS,
     allowed: DEFAULT_ALLOWED_OPTIONS,
     features: DEFAULT_FEATURES,
-    addDefaults: true
+    addDefaults: true,
+    logger: DEFAULT_LOGGER,
 };
+
