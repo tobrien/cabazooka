@@ -12,24 +12,9 @@ import {
     DEFAULT_TIMEZONE
 } from "./constants";
 import { ArgumentError } from "./error/ArgumentError";
-import { DefaultOptions, Feature, FilenameOptionSchema, FilesystemStructureSchema } from "./options";
-import { z } from "zod";
+import { DefaultOptions, Feature } from "./cabazooka";
 
 export { ArgumentError };
-
-export const ConfigSchema = z.object({
-    timezone: z.string(),
-    inputDirectory: z.string().optional(),
-    inputStructure: FilesystemStructureSchema.optional(),
-    inputFilenameOptions: z.array(FilenameOptionSchema).optional(),
-    recursive: z.boolean().optional(),
-    outputDirectory: z.string().optional(),
-    outputStructure: FilesystemStructureSchema.optional(),
-    outputFilenameOptions: z.array(FilenameOptionSchema).optional(),
-    extensions: z.array(z.string()).optional(),
-});
-
-export type Config = z.infer<typeof ConfigSchema>;
 
 const addOption = (command: Command, option: string, description: string, addDefaults: boolean, defaultValue: boolean | string[] | string | undefined) => {
     if (addDefaults) {

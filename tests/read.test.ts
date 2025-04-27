@@ -1,7 +1,5 @@
 import { jest } from '@jest/globals';
-import type { Config } from '../src/configure';
-import type { Args } from '../src/read';
-import type { Feature } from '../src/options';
+import type { Args, Config, Feature } from '../src/cabazooka';
 
 // --- Dynamically Import Module Under Test ---
 // Although read.ts currently has no dependencies needing mocks,
@@ -111,9 +109,9 @@ describe('read', () => {
         await expect(read(baseArgs, features)).resolves.toEqual(expectedConfig);
     });
 
-     test('should omit output structure/filenameOptions if "structured-output" feature is disabled', async () => {
+    test('should omit output structure/filenameOptions if "structured-output" feature is disabled', async () => {
         const features: Feature[] = ['input', 'output', 'structured-input', 'extensions']; // 'structured-output' omitted
-         const args: Args = {
+        const args: Args = {
             ...baseArgs,
             outputStructure: 'year',
             outputFilenameOptions: ['time'],
@@ -131,7 +129,7 @@ describe('read', () => {
         await expect(read(args, features)).resolves.toEqual(expectedConfig);
     });
 
-     test('should omit extensions if "extensions" feature is disabled', async () => {
+    test('should omit extensions if "extensions" feature is disabled', async () => {
         const features: Feature[] = ['input', 'output', 'structured-input', 'structured-output']; // 'extensions' omitted
         const expectedConfig: Partial<Config> = {
             timezone: 'UTC',

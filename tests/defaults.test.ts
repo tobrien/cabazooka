@@ -1,8 +1,6 @@
-import { jest } from '@jest/globals';
-import { Config } from '../src/configure';
-import { applyDefaults } from '../src/defaults';
+import { Config, DefaultOptions, Feature } from '../src/cabazooka';
 import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE } from '../src/constants';
-import { DefaultOptions, Feature } from '../src/options';
+import { applyDefaults } from '../src/defaults';
 
 // No external modules with side effects to mock for defaults.ts logic itself,
 // but we keep the structure consistent with validate.test.ts.
@@ -74,7 +72,7 @@ describe('applyDefaults', () => {
         });
     });
 
-     test('should handle mixed provided config and feature limitations', () => {
+    test('should handle mixed provided config and feature limitations', () => {
         const partialConfig: Partial<Config> = {
             inputDirectory: '/specific/input',
             outputDirectory: '/specific/output', // This should NOT be in the result
@@ -89,9 +87,9 @@ describe('applyDefaults', () => {
             outputDirectory: '/specific/output',
             outputStructure: undefined,
             outputFilenameOptions: undefined,
-             // Extensions related fields should be undefined
+            // Extensions related fields should be undefined
             extensions: undefined,
-             // Input structure related fields should be undefined
+            // Input structure related fields should be undefined
             inputStructure: undefined,
             inputFilenameOptions: undefined,
         });
@@ -123,7 +121,7 @@ describe('applyDefaults', () => {
         });
     });
 
-     test('should prioritize provided config over custom defaults', () => {
+    test('should prioritize provided config over custom defaults', () => {
         const partialConfig: Partial<Config> = {
             timezone: 'Asia/Tokyo', // Provided config
             inputDirectory: '/my/input', // Provided config
@@ -134,7 +132,7 @@ describe('applyDefaults', () => {
             outputDirectory: '/default/out', // Custom default
             recursive: false, // Custom default
         };
-         // Enable features relevant to the config/defaults
+        // Enable features relevant to the config/defaults
         const features: Feature[] = ['input', 'output'];
         const result = applyDefaults(partialConfig, features, customDefaults);
         expect(result).toEqual({
@@ -142,7 +140,7 @@ describe('applyDefaults', () => {
             recursive: false, // From customDefaults (input feature)
             inputDirectory: '/my/input', // From partialConfig (input feature)
             outputDirectory: '/default/out', // From customDefaults (output feature)
-             // Fields for disabled features or not in custom/partial should be undefined
+            // Fields for disabled features or not in custom/partial should be undefined
             outputStructure: undefined,
             outputFilenameOptions: undefined,
             extensions: undefined,
@@ -158,7 +156,7 @@ describe('applyDefaults', () => {
         const config2 = applyDefaults({ recursive: false }, ['input'], baseDefaults);
         expect(config2.recursive).toBe(false); // Should use provided false
 
-         const config3 = applyDefaults({ recursive: true }, ['input'], baseDefaults);
+        const config3 = applyDefaults({ recursive: true }, ['input'], baseDefaults);
         expect(config3.recursive).toBe(true); // Should use provided true
 
         const customDefaults = { recursive: true };

@@ -1,9 +1,9 @@
 import path from 'path';
 import { DATE_FORMAT_DAY, DATE_FORMAT_MONTH, DATE_FORMAT_MONTH_DAY, DATE_FORMAT_YEAR, DATE_FORMAT_YEAR_MONTH_DAY } from './constants';
-import { Config } from './configure';
+import { Config } from './cabazooka';
 import * as Dates from './util/dates';
 import * as Storage from './util/storage';
-import { Options } from 'options';
+import { Options } from 'cabazooka';
 
 export const create = (config: Config, options: Options): {
     constructFilename: (date: Date, type: string, hash: string, options?: { subject?: string }) => string;

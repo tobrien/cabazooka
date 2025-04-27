@@ -1,16 +1,13 @@
 import { jest } from '@jest/globals';
-import type { Config } from '../src/configure';
-import type { Options, Feature } from '../src/options';
-import type { Args } from '../src/read';
+import type { Args, Config, Operator, Options } from '../src/cabazooka';
 import type * as Input from '../src/input/input';
 import type * as Output from '../src/output';
-import type { Operator } from '../src/operate'; // Import Operator type
 
 // --- Mock Dependencies ---
 
 // Mock Input module
 // Use the actual return type structure from Input.create
-const mockInputProcess = jest.fn<(callback: (file: string, date?: Date) => Promise<void>) => Promise<void>>(); 
+const mockInputProcess = jest.fn<(callback: (file: string, date?: Date) => Promise<void>) => Promise<void>>();
 const mockInputCreate = jest.fn<typeof Input.create>().mockReturnValue({
     process: mockInputProcess,
 });
@@ -57,7 +54,7 @@ describe('Operator Factory (create)', () => {
             outputDirectory: '/out',
             timezone: 'UTC',
         };
-        baseArgs = { 
+        baseArgs = {
             recursive: false,
             timezone: 'UTC', // Or derive from baseConfig if needed
             inputDirectory: '/in', // Or derive from baseConfig

@@ -1,22 +1,7 @@
-import { Config } from "configure";
+import { Config, Feature, Args } from "cabazooka";
 import { ArgumentError } from "./error/ArgumentError";
-import { Feature, FilenameOption, FilesystemStructure } from "./options";
 
 export { ArgumentError };
-
-export interface Args {
-    recursive: boolean;
-    timezone: string;
-    inputDirectory: string;
-    inputStructure?: FilesystemStructure;
-    inputFilenameOptions?: FilenameOption[];
-    outputDirectory: string;
-    outputStructure?: FilesystemStructure;
-    outputFilenameOptions?: FilenameOption[];
-    extensions: string[];
-    start?: string; // Start date string
-    end?: string;   // End date string
-}
 
 export const read = async (args: Args, features: Feature[]): Promise<Partial<Config>> => {
 

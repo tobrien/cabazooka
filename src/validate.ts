@@ -1,4 +1,4 @@
-import { Config } from "./configure";
+import { Config } from "./cabazooka";
 import {
     ALLOWED_EXTENSIONS,
     ALLOWED_INPUT_FILENAME_OPTIONS,
@@ -7,7 +7,7 @@ import {
     ALLOWED_OUTPUT_STRUCTURES,
 } from "./constants";
 import { ArgumentError } from "./error/ArgumentError";
-import { FilenameOption, FilesystemStructure, Options } from "./options";
+import { FilenameOption, FilesystemStructure, Options } from "./cabazooka";
 import * as Dates from "./util/dates";
 import * as Storage from "./util/storage";
 

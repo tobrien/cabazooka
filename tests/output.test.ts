@@ -1,6 +1,5 @@
 import { jest } from '@jest/globals';
-import type { Config } from '../src/configure';
-import type { Options } from '../src/options';
+import type { Config, Options } from '../src/cabazooka';
 import type * as StorageUtil from '../src/util/storage';
 import type * as DatesUtil from '../src/util/dates';
 import path from 'path'; // Import path for verification

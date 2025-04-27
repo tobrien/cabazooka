@@ -1,8 +1,6 @@
 import { jest } from '@jest/globals';
 import type { Command } from 'commander';
-import type { Config } from '../src/configure';
-import type { Args } from '../src/read';
-import type { Feature, FilesystemStructure, Logger } from '../src/options';
+import type { Config, Args, Feature, FilesystemStructure, Logger, Operator } from '../src/cabazooka';
 import type * as ConfigureModule from '../src/configure';
 import type * as DefaultsModule from '../src/defaults';
 import type * as ReadModule from '../src/read';
@@ -16,7 +14,7 @@ const mockApplyDefaults = jest.fn<typeof DefaultsModule.applyDefaults>();
 const mockRead = jest.fn<typeof ReadModule.read>();
 const mockValidate = jest.fn<typeof ValidateModule.validate>();
 const mockCreateOperator = jest.fn<typeof OperateModule.create>();
-const mockOperatorInstance = { /* Mock operator instance methods if needed */ } as OperateModule.Operator;
+const mockOperatorInstance = { /* Mock operator instance methods if needed */ } as Operator;
 
 // Mock the modules
 jest.unstable_mockModule('../src/configure', () => ({
@@ -129,22 +127,22 @@ describe('Cabazooka Factory (`create`)', () => {
         });
 
         test('`configure` should use overridden options', async () => {
-             const customDefaults = { timezone: 'EST' };
-             const customFeatures: Feature[] = ['output'];
-             const customAddDefaults = false;
-             const cabazookaCustom = create({
-                 defaults: customDefaults,
-                 features: customFeatures,
-                 addDefaults: customAddDefaults,
-             });
+            const customDefaults = { timezone: 'EST' };
+            const customFeatures: Feature[] = ['output'];
+            const customAddDefaults = false;
+            const cabazookaCustom = create({
+                defaults: customDefaults,
+                features: customFeatures,
+                addDefaults: customAddDefaults,
+            });
 
-             await cabazookaCustom.configure(mockCommand);
-             expect(mockConfigure).toHaveBeenCalledWith(
-                 mockCommand,
-                 expect.objectContaining(customDefaults),
-                 customAddDefaults,
-                 customFeatures
-             );
+            await cabazookaCustom.configure(mockCommand);
+            expect(mockConfigure).toHaveBeenCalledWith(
+                mockCommand,
+                expect.objectContaining(customDefaults),
+                customAddDefaults,
+                customFeatures
+            );
         });
 
         test('`setLogger` should update the logger used internally', async () => {
@@ -155,7 +153,7 @@ describe('Cabazooka Factory (`create`)', () => {
             cabazooka.setLogger(newLogger);
 
             await cabazooka.validate(fullConfig);
-             expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({ logger: newLogger }));
+            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({ logger: newLogger }));
         });
 
         test('`read` should call the read module and store args', async () => {
@@ -165,14 +163,14 @@ describe('Cabazooka Factory (`create`)', () => {
             expect(result).toEqual(testConfig);
 
             await cabazooka.operate(fullConfig);
-             expect(mockCreateOperator).toHaveBeenCalledWith(
+            expect(mockCreateOperator).toHaveBeenCalledWith(
                 fullConfig,
                 testArgs,
                 expect.any(Object)
             );
         });
 
-         test('`read` should use overridden features', async () => {
+        test('`read` should use overridden features', async () => {
             const customFeatures: Feature[] = ['input', 'output'];
             const cabazookaCustom = create({ features: customFeatures });
             await cabazookaCustom.read(testArgs, customFeatures);
@@ -190,7 +188,7 @@ describe('Cabazooka Factory (`create`)', () => {
             expect(result).toEqual(fullConfig);
         });
 
-         test('`applyDefaults` should use overridden features and defaults', () => {
+        test('`applyDefaults` should use overridden features and defaults', () => {
             const customDefaults = { recursive: true };
             const customFeatures: Feature[] = ['input'];
             const cabazookaCustom = create({ defaults: customDefaults, features: customFeatures });
@@ -207,22 +205,22 @@ describe('Cabazooka Factory (`create`)', () => {
             await cabazooka.validate(fullConfig);
             expect(mockValidate).toHaveBeenCalledTimes(1);
             expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({
-                 features: DEFAULT_FEATURES,
-                 allowed: DEFAULT_ALLOWED_OPTIONS,
-                 logger: mockLogger
+                features: DEFAULT_FEATURES,
+                allowed: DEFAULT_ALLOWED_OPTIONS,
+                logger: mockLogger
             }));
         });
 
         test('`validate` should use overridden options', async () => {
-             const customAllowed = { extensions: ['md'] };
-             const customFeatures: Feature[] = ['input'];
-             const cabazookaCustom = create({ allowed: customAllowed, features: customFeatures, logger: mockLogger });
+            const customAllowed = { extensions: ['md'] };
+            const customFeatures: Feature[] = ['input'];
+            const cabazookaCustom = create({ allowed: customAllowed, features: customFeatures, logger: mockLogger });
 
-             await cabazookaCustom.validate(fullConfig);
-             expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({
-                 features: customFeatures,
-                 allowed: expect.objectContaining(customAllowed),
-                 logger: mockLogger
+            await cabazookaCustom.validate(fullConfig);
+            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({
+                features: customFeatures,
+                allowed: expect.objectContaining(customAllowed),
+                logger: mockLogger
             }));
         });
 
@@ -243,16 +241,16 @@ describe('Cabazooka Factory (`create`)', () => {
             expect(operator).toBe(mockOperatorInstance);
         });
 
-         test('`operate` should use overridden options', async () => {
+        test('`operate` should use overridden options', async () => {
             const customDefaults = { outputDirectory: '/custom/out' };
             const customAllowed = { inputStructures: ['none'] as FilesystemStructure[] };
             const customFeatures: Feature[] = ['output'];
-             const cabazookaCustom = create({
-                 defaults: customDefaults,
-                 allowed: customAllowed,
-                 features: customFeatures,
-                 logger: mockLogger
-             });
+            const cabazookaCustom = create({
+                defaults: customDefaults,
+                allowed: customAllowed,
+                features: customFeatures,
+                logger: mockLogger
+            });
 
             await cabazookaCustom.read(testArgs, customFeatures);
             await cabazookaCustom.operate(fullConfig);

@@ -1,8 +1,6 @@
-import { Config } from './configure';
+import { Config } from './cabazooka';
 import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE } from './constants';
-import { DefaultOptions, Feature } from './options';
-
-export * from './options';
+import { DefaultOptions, Feature } from './cabazooka';
 
 export const applyDefaults = (config: Partial<Config>, features: Feature[], defaults: DefaultOptions): Config => {
     const configWithDefaults = {

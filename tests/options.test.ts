@@ -14,7 +14,7 @@ import {
     type DefaultOptions,
     type AllowedOptions,
     type Logger,
-} from '../src/options';
+} from '../src/cabazooka';
 import {
     ALLOWED_EXTENSIONS,
     ALLOWED_OUTPUT_FILENAME_OPTIONS,

@@ -1,6 +1,5 @@
 import { jest } from '@jest/globals';
-import type { Config } from '../src/configure';
-import type { Options, FilesystemStructure, FilenameOption, Feature } from '../src/options';
+import type { Config, Options, FilesystemStructure, FilenameOption, Feature } from '../src/cabazooka';
 import type * as StorageUtil from '../src/util/storage';
 import type * as DatesUtil from '../src/util/dates';
 import { ALLOWED_EXTENSIONS, ALLOWED_INPUT_FILENAME_OPTIONS, ALLOWED_INPUT_STRUCTURES, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES } from '../src/constants';
@@ -131,7 +130,7 @@ describe('validate', () => {
             .resolves.toBeUndefined();
     });
 
-     test('should skip input structure/filename validation if "structured-input" feature is disabled', async () => {
+    test('should skip input structure/filename validation if "structured-input" feature is disabled', async () => {
         // Use an invalid structure that would normally throw
         await expect(runValidation({ inputStructure: 'invalid-structure' as any }, { features: ['input', 'output'] }))
             .resolves.toBeUndefined();
@@ -173,11 +172,11 @@ describe('validate', () => {
         const customAllowed: FilesystemStructure[] = ['flat', 'custom'];
 
         // @ts-ignore - Allow invalid output structure
-         await expect(runValidation({ outputStructure: 'yearMonth' }, { allowed: { ...baseOptions.allowed, outputStructures: customAllowed }}))
+        await expect(runValidation({ outputStructure: 'yearMonth' }, { allowed: { ...baseOptions.allowed, outputStructures: customAllowed } }))
             .rejects.toThrow(new ArgumentError('--output-structure', `Invalid output structure: yearMonth. Valid options are: ${customAllowed.join(', ')}`));
 
         // @ts-ignore - Allow invalid output structure
-        await expect(runValidation({ outputStructure: 'custom' }, { allowed: { ...baseOptions.allowed, outputStructures: customAllowed }}))
+        await expect(runValidation({ outputStructure: 'custom' }, { allowed: { ...baseOptions.allowed, outputStructures: customAllowed } }))
             .resolves.toBeUndefined();
     });
 
@@ -192,7 +191,7 @@ describe('validate', () => {
             .rejects.toThrow(new ArgumentError('--output-filename-options', 'Filename options should be space-separated, not comma-separated. Example: --output-filename-options date time subject'));
     });
 
-     test('should throw on quoted output filename options string', async () => {
+    test('should throw on quoted output filename options string', async () => {
         await expect(runValidation({ outputFilenameOptions: ['date time subject'] as any })) // Simulates commander parsing "date time subject" as one arg
             .rejects.toThrow(new ArgumentError('--output-filename-options', 'Filename options should not be quoted. Use: --output-filename-options date time subject instead of --output-filename-options "date time subject"'));
     });
@@ -211,10 +210,10 @@ describe('validate', () => {
     test('should use custom allowed output filename options from options', async () => {
         // @ts-ignore - Allow invalid filename options
         const customAllowed: FilenameOption[] = ['subject', 'custom'];
-        await expect(runValidation({ outputFilenameOptions: ['date'] }, { allowed: { ...baseOptions.allowed, outputFilenameOptions: customAllowed }}))
+        await expect(runValidation({ outputFilenameOptions: ['date'] }, { allowed: { ...baseOptions.allowed, outputFilenameOptions: customAllowed } }))
             .rejects.toThrow(new ArgumentError('--output-filename-options', `Invalid filename options: date. Valid options are: ${customAllowed.join(', ')}`));
         // @ts-ignore - Allow invalid filename options
-        await expect(runValidation({ outputFilenameOptions: ['custom'] }, { allowed: { ...baseOptions.allowed, outputFilenameOptions: customAllowed }}))
+        await expect(runValidation({ outputFilenameOptions: ['custom'] }, { allowed: { ...baseOptions.allowed, outputFilenameOptions: customAllowed } }))
             .resolves.toBeUndefined();
     });
 
@@ -226,7 +225,7 @@ describe('validate', () => {
 
 
     // --- Input Filename Options Validation (Mirror Output Filename Options) ---
-     test('should pass with valid input filename options', async () => {
+    test('should pass with valid input filename options', async () => {
         await expect(runValidation({ inputFilenameOptions: ['date', 'time', 'subject'] })).resolves.toBeUndefined();
     });
 
@@ -237,7 +236,7 @@ describe('validate', () => {
 
     test('should throw on quoted input filename options string', async () => {
         await expect(runValidation({ inputFilenameOptions: ['date time subject'] as any }))
-             .rejects.toThrow(new ArgumentError('--input-filename-options', 'Filename options should not be quoted. Use: --input-filename-options date time subject instead of --input-filename-options "date time subject"'));
+            .rejects.toThrow(new ArgumentError('--input-filename-options', 'Filename options should not be quoted. Use: --input-filename-options date time subject instead of --input-filename-options "date time subject"'));
     });
 
 
@@ -262,11 +261,11 @@ describe('validate', () => {
             .rejects.toThrow(new ArgumentError('--extensions', `Invalid extensions: eml, invalid, msg. Valid options are: md`));
     });
 
-     test('should use custom allowed extensions from options', async () => {
+    test('should use custom allowed extensions from options', async () => {
         const customAllowed = ['foo', 'bar'];
-         await expect(runValidation({ extensions: ['eml'] }, { allowed: { ...baseOptions.allowed, extensions: customAllowed }}))
+        await expect(runValidation({ extensions: ['eml'] }, { allowed: { ...baseOptions.allowed, extensions: customAllowed } }))
             .rejects.toThrow(new ArgumentError('--extensions', `Invalid extensions: eml. Valid options are: foo, bar`));
-         await expect(runValidation({ extensions: ['foo'] }, { allowed: { ...baseOptions.allowed, extensions: customAllowed }}))
+        await expect(runValidation({ extensions: ['foo'] }, { allowed: { ...baseOptions.allowed, extensions: customAllowed } }))
             .resolves.toBeUndefined();
     });
 

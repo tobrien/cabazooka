@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Command } from 'commander';
-import type { DefaultOptions, Feature } from '../src/options';
+import type { DefaultOptions, Feature } from '../src/cabazooka';
 import {
     DATE_FORMAT_YEAR_MONTH_DAY,
     DEFAULT_EXTENSIONS,
@@ -69,7 +69,7 @@ describe('configure', () => {
     };
 
     // Helper to check if an option was NOT added
-     const expectOptionNotAdded = (flag: string) => {
+    const expectOptionNotAdded = (flag: string) => {
         const calls = (mockCommand.option as jest.Mock).mock.calls;
         expect(calls).not.toContainEqual(expect.arrayContaining([flag]));
     };
@@ -93,7 +93,7 @@ describe('configure', () => {
         expect(mockCommand.option).toHaveBeenCalledTimes(11); // Ensure no extra options were added
     });
 
-     test('should add all options with default descriptions when addDefaults is false', async () => {
+    test('should add all options with default descriptions when addDefaults is false', async () => {
         await configure(mockCommand, baseDefaults, false, allFeatures);
 
         // Check that descriptions contain the default value text
@@ -147,7 +147,7 @@ describe('configure', () => {
         expect(mockCommand.option).toHaveBeenCalledTimes(1);
     });
 
-     test('should skip input options if "input" feature is disabled', async () => {
+    test('should skip input options if "input" feature is disabled', async () => {
         const features: Feature[] = ['output', 'structured-output', 'extensions', 'structured-input']; // Exclude 'input'
         await configure(mockCommand, baseDefaults, true, features);
 
@@ -157,7 +157,7 @@ describe('configure', () => {
         // Check others are still added
         expectOptionAdded('--timezone <timezone>', 'timezone for date calculations', DEFAULT_TIMEZONE);
         expectOptionAdded('-o, --output-directory <outputDirectory>', 'output directory', DEFAULT_OUTPUT_DIRECTORY);
-         expectOptionAdded('--output-structure <type>', 'output directory structure (none/year/month/day)', DEFAULT_OUTPUT_STRUCTURE);
+        expectOptionAdded('--output-structure <type>', 'output directory structure (none/year/month/day)', DEFAULT_OUTPUT_STRUCTURE);
         expect(mockCommand.option).toHaveBeenCalledTimes(11 - 2); // Total options minus the 2 skipped
     });
 
@@ -188,7 +188,7 @@ describe('configure', () => {
         expect(mockCommand.option).toHaveBeenCalledTimes(11 - 2);
     });
 
-     test('should skip extensions option if "extensions" feature is disabled', async () => {
+    test('should skip extensions option if "extensions" feature is disabled', async () => {
         const features: Feature[] = ['input', 'output', 'structured-output', 'structured-input']; // Exclude 'extensions'
         await configure(mockCommand, baseDefaults, true, features);
 
@@ -200,7 +200,7 @@ describe('configure', () => {
         expect(mockCommand.option).toHaveBeenCalledTimes(11 - 1);
     });
 
-     test('should skip structured input options if "structured-input" feature is disabled', async () => {
+    test('should skip structured input options if "structured-input" feature is disabled', async () => {
         const features: Feature[] = ['input', 'output', 'structured-output', 'extensions']; // Exclude 'structured-input'
         await configure(mockCommand, baseDefaults, true, features);
 
@@ -212,7 +212,7 @@ describe('configure', () => {
         // Check others are still added
         expectOptionAdded('--timezone <timezone>', 'timezone for date calculations', DEFAULT_TIMEZONE);
         expectOptionAdded('--extensions [extensions...]', expect.stringContaining('file extensions to process'), DEFAULT_EXTENSIONS);
-         expect(mockCommand.option).toHaveBeenCalledTimes(11 - 4);
+        expect(mockCommand.option).toHaveBeenCalledTimes(11 - 4);
     });
 
 });
