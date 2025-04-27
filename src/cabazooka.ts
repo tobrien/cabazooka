@@ -1,27 +1,12 @@
 import { Command } from 'commander';
-import { Logger } from "winston";
+import { configure } from './configure';
+import { applyDefaults } from './defaults';
+import { read } from './read';
+import { validate } from './validate';
+
+import { ALLOWED_EXTENSIONS, ALLOWED_INPUT_FILENAME_OPTIONS, ALLOWED_INPUT_STRUCTURES, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES, DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE } from './constants';
 import { z } from 'zod';
-import * as Arguments from './arguments';
-import { DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE } from './constants';
-import * as Input from './input';
-import { Options as CabazookaOptions, FilenameOption, FilenameOptionSchema, FilesystemStructure, FilesystemStructureSchema } from "./options";
-import * as Output from './output';
-
-export * from './options';
-
-export interface Cabazooka {
-    configure: (command: Command) => Promise<Command>;
-    setLogger: (logger: Logger) => void;
-    validate: (args: Args) => Promise<Config>;
-    applyDefaults: (config: Config) => Config;
-    operate: (config: Config) => Promise<Operator>;
-}
-
-export interface Operator {
-    process: (callback: (file: string) => Promise<void>) => Promise<void>;
-    constructFilename: (createDate: Date, type: string, hash: string, options?: { subject?: string }) => Promise<string>;
-    constructOutputDirectory: (createDate: Date) => Promise<string>;
-}
+import { create as createOperator } from './operate';
 
 export interface Args {
     recursive: boolean;
@@ -37,12 +22,108 @@ export interface Args {
     end?: string;   // End date string
 }
 
-export const DateRangeSchema = z.object({
-    start: z.date(),
-    end: z.date(),
-});
+export type Feature = 'input' | 'output' | 'structured-output' | 'structured-input' | 'extensions';
 
-export type DateRange = z.infer<typeof DateRangeSchema>;
+export const FilenameOptionSchema = z.enum([
+    'date',
+    'time',
+    'subject',
+]);
+
+export type FilenameOption = z.infer<typeof FilenameOptionSchema>;
+
+export const FilesystemStructureSchema = z.enum([
+    'none',
+    'year',
+    'month',
+    'day',
+]);
+
+export type FilesystemStructure = z.infer<typeof FilesystemStructureSchema>;
+
+export interface DefaultOptions {
+    timezone?: string;
+    recursive?: boolean;
+    inputDirectory?: string;
+    inputStructure?: FilesystemStructure;
+    inputFilenameOptions?: FilenameOption[];
+    outputDirectory?: string;
+    outputStructure?: FilesystemStructure;
+    outputFilenameOptions?: FilenameOption[];
+    extensions?: string[];
+    startDate?: string;
+    endDate?: string;
+}
+
+export interface AllowedOptions {
+    inputStructures?: FilesystemStructure[];
+    inputFilenameOptions?: FilenameOption[];
+    outputStructures?: FilesystemStructure[];
+    outputFilenameOptions?: FilenameOption[];
+    extensions?: string[];
+}
+
+export interface Options {
+    defaults?: DefaultOptions,
+    allowed?: AllowedOptions,
+    features: Feature[],
+    addDefaults: boolean;
+    logger: Logger;
+}
+
+export interface Logger {
+    debug: (message: string, ...args: any[]) => void;
+    info: (message: string, ...args: any[]) => void;
+    warn: (message: string, ...args: any[]) => void;
+    error: (message: string, ...args: any[]) => void;
+    verbose: (message: string, ...args: any[]) => void;
+    silly: (message: string, ...args: any[]) => void;
+}
+
+export const DEFAULT_APP_OPTIONS: DefaultOptions = {
+    timezone: DEFAULT_TIMEZONE,
+    recursive: DEFAULT_RECURSIVE,
+    inputDirectory: DEFAULT_INPUT_DIRECTORY,
+    inputStructure: DEFAULT_INPUT_STRUCTURE,
+    inputFilenameOptions: DEFAULT_INPUT_FILENAME_OPTIONS,
+    outputDirectory: DEFAULT_OUTPUT_DIRECTORY,
+    outputStructure: DEFAULT_OUTPUT_STRUCTURE,
+    outputFilenameOptions: DEFAULT_OUTPUT_FILENAME_OPTIONS,
+    extensions: DEFAULT_EXTENSIONS,
+}
+
+export const DEFAULT_ALLOWED_OPTIONS: AllowedOptions = {
+    inputStructures: ALLOWED_INPUT_STRUCTURES,
+    inputFilenameOptions: ALLOWED_INPUT_FILENAME_OPTIONS,
+    outputStructures: ALLOWED_OUTPUT_STRUCTURES,
+    outputFilenameOptions: ALLOWED_OUTPUT_FILENAME_OPTIONS,
+    extensions: ALLOWED_EXTENSIONS,
+}
+
+export const DEFAULT_FEATURES: Feature[] = ['output', 'structured-output', 'input', 'extensions'];
+
+export const DEFAULT_LOGGER: Logger = {
+    // eslint-disable-next-line no-console
+    debug: (message: string, ...args: any[]) => console.debug(message, ...args),
+    // eslint-disable-next-line no-console
+    info: (message: string, ...args: any[]) => console.info(message, ...args),
+    // eslint-disable-next-line no-console
+    warn: (message: string, ...args: any[]) => console.warn(message, ...args),
+    // eslint-disable-next-line no-console
+    error: (message: string, ...args: any[]) => console.error(message, ...args),
+    // eslint-disable-next-line no-console
+    verbose: (message: string, ...args: any[]) => console.log(message, ...args),
+    // eslint-disable-next-line no-console
+    silly: (message: string, ...args: any[]) => console.log(message, ...args),
+}
+
+export const DEFAULT_OPTIONS = {
+    defaults: DEFAULT_APP_OPTIONS,
+    allowed: DEFAULT_ALLOWED_OPTIONS,
+    features: DEFAULT_FEATURES,
+    addDefaults: true,
+    logger: DEFAULT_LOGGER,
+};
 
 export const ConfigSchema = z.object({
     timezone: z.string(),
@@ -54,99 +135,51 @@ export const ConfigSchema = z.object({
     outputStructure: FilesystemStructureSchema.optional(),
     outputFilenameOptions: z.array(FilenameOptionSchema).optional(),
     extensions: z.array(z.string()).optional(),
-    dateRange: DateRangeSchema.optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
 
-export type FileData = object;
+export interface Operator {
+    process: (callback: (file: string) => Promise<void>) => Promise<void>;
+    constructFilename: (createDate: Date, type: string, hash: string, options?: { subject?: string }) => Promise<string>;
+    constructOutputDirectory: (createDate: Date) => Promise<string>;
+}
 
-export const create = (options: CabazookaOptions): Cabazooka => {
+export interface Cabazooka {
+    configure: (command: Command) => Promise<void>;
+    setLogger: (logger: Logger) => void;
+    read: (args: Args) => Promise<Partial<Config>>;
+    applyDefaults: (config: Partial<Config>) => Config;
+    validate: (config: Config) => Promise<void>;
+    operate: (config: Config) => Promise<Operator>;
+}
 
-    let logger: Logger | typeof console = console;
+export const create = (
+    creationOptsParam: Partial<Options> = {}
+): Cabazooka => {
 
-    const argumentsInstance = Arguments.create(options);
+    let args: Args;
 
-    const setLogger = (pLogger: Logger) => {
-        logger = pLogger;
-    }
-
-    const configure = (command: Command): Promise<Command> => {
-        return argumentsInstance.configure(command);
-    }
-
-    const validate = async (args: Args): Promise<Config> => {
-        const config = await argumentsInstance.validate(args);
-        return config;
-    }
-
-    const operate = async (config: Config): Promise<Operator> => {
-        const output = Output.create(config.timezone, config, options, logger);
-        const input = Input.create(config, options, logger);
-
-        const process = async (callback: (file: string) => Promise<void>) => {
-            if (!options.isFeatureEnabled('input')) {
-                throw new Error('Input feature is not enabled, skipping input processing');
-            }
-            return input.process(callback);
-        }
-
-        const constructFilename = async (createDate: Date, type: string, hash: string, context?: { subject?: string }): Promise<string> => {
-            if (!options.isFeatureEnabled('output')) {
-                throw new Error('Output feature is not enabled, skipping output construction');
-            }
-            return output.constructFilename(createDate, type, hash, context);
-        }
-
-        const constructOutputDirectory = async (createDate: Date): Promise<string> => {
-            if (!options.isFeatureEnabled('output')) {
-                throw new Error('Output feature is not enabled, skipping output construction');
-            }
-            return output.constructOutputDirectory(createDate);
-        }
-
-        return {
-            process,
-            constructFilename,
-            constructOutputDirectory,
-        }
-
-    }
-
-    const applyDefaults = (config: Config): Config => {
-        const configWithDefaults = {
-            ...config,
-        }
-
-        if (options.isFeatureEnabled('input')) {
-            configWithDefaults.recursive = config.recursive === undefined ? DEFAULT_RECURSIVE : config.recursive;
-            configWithDefaults.inputDirectory = config.inputDirectory || (options.defaults?.inputDirectory || DEFAULT_INPUT_DIRECTORY);
-        }
-        if (options.isFeatureEnabled('output')) {
-            configWithDefaults.outputDirectory = config.outputDirectory || (options.defaults?.outputDirectory || DEFAULT_OUTPUT_DIRECTORY);
-        }
-        if (options.isFeatureEnabled('structured-output')) {
-            configWithDefaults.outputStructure = config.outputStructure || (options.defaults?.outputStructure || DEFAULT_OUTPUT_STRUCTURE);
-            configWithDefaults.outputFilenameOptions = config.outputFilenameOptions || (options.defaults?.outputFilenameOptions || DEFAULT_OUTPUT_FILENAME_OPTIONS);
-        }
-        if (options.isFeatureEnabled('extensions')) {
-            configWithDefaults.extensions = config.extensions || (options.defaults?.extensions || DEFAULT_EXTENSIONS);
-        }
-
-        if (options.isFeatureEnabled('structured-input')) {
-            configWithDefaults.inputStructure = config.inputStructure || (options.defaults?.inputStructure || DEFAULT_INPUT_STRUCTURE);
-            configWithDefaults.inputFilenameOptions = config.inputFilenameOptions || (options.defaults?.inputFilenameOptions || DEFAULT_INPUT_FILENAME_OPTIONS);
-        }
-
-        return configWithDefaults;
-    }
+    const options: Options = {
+        defaults: { ...DEFAULT_APP_OPTIONS, ...creationOptsParam.defaults },
+        allowed: { ...DEFAULT_ALLOWED_OPTIONS, ...creationOptsParam.allowed },
+        features: creationOptsParam.features || DEFAULT_FEATURES,
+        addDefaults: creationOptsParam.addDefaults === undefined ? DEFAULT_OPTIONS.addDefaults : creationOptsParam.addDefaults,
+        logger: creationOptsParam.logger || DEFAULT_OPTIONS.logger
+    };
 
     return {
-        setLogger,
-        configure,
-        validate,
-        operate,
-        applyDefaults,
+        configure: async (command: Command) => configure(command, options.defaults || {}, options.addDefaults, options.features),
+        setLogger: (logger: Logger) => {
+            options.logger = logger;
+        },
+        read: async (pArgs: Args) => {
+            args = pArgs;
+            return read(args, options.features);
+        },
+        applyDefaults: (config: Partial<Config>) => applyDefaults(config, options.features, options.defaults || {}),
+        validate: async (config: Config) => validate(config, options),
+        operate: async (config: Config) => createOperator(config, args, options),
     }
 }
 

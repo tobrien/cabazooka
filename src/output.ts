@@ -1,15 +1,16 @@
 import path from 'path';
-import { Config } from './cabazooka';
 import { DATE_FORMAT_DAY, DATE_FORMAT_MONTH, DATE_FORMAT_MONTH_DAY, DATE_FORMAT_YEAR, DATE_FORMAT_YEAR_MONTH_DAY } from './constants';
+import { Config } from './cabazooka';
 import * as Dates from './util/dates';
 import * as Storage from './util/storage';
-import { Logger } from 'winston';
-import { Options } from 'options';
+import { Options } from 'cabazooka';
 
-export const create = (timezone: string, config: Config, options: Options, logger: Logger | typeof console): {
+export const create = (config: Config, options: Options): {
     constructFilename: (date: Date, type: string, hash: string, options?: { subject?: string }) => string;
     constructOutputDirectory: (creationTime: Date) => string;
 } => {
+    const logger = options.logger;
+    const timezone = config.timezone || 'UTC';
     const dates = Dates.create({ timezone });
     const storage: Storage.Utility = Storage.create({ log: logger.debug });
 
@@ -36,9 +37,9 @@ export const create = (timezone: string, config: Config, options: Options, logge
     function sanitizeFilenameString(str: string): string {
         // Replace any character that is not alphanumeric, hyphen, underscore, or dot with an underscore
         return str.replace(/[^a-zA-Z0-9\-_.]/g, '_')
-            // Replace multiple consecutive hyphens with a single hyphen
-            .replace(/-+/g, '_')
-            // Remove leading and trailing hyphens
+            // Replace multiple consecutive underscores with a single underscore
+            .replace(/_+/g, '_')
+            // Remove leading and trailing underscores
             .replace(/^_+|_+$/g, '')
             // Ensure the string is not empty
             .replace(/^$/, 'untitled');
@@ -70,8 +71,11 @@ export const create = (timezone: string, config: Config, options: Options, logge
         // Add message ID
         parts.push(hash);
         parts.push(type);
-        if (options.subject) {
-            parts.push(sanitizeFilenameString(options.subject));
+
+        // Add subject if requested
+        if (outputFilenameOptions?.includes('subject')) {
+            // Sanitize the provided subject, defaulting to empty string if undefined/null
+            parts.push(sanitizeFilenameString(options.subject || ''));
         }
 
         return parts.join('-');
