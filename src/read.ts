@@ -3,6 +3,12 @@ import { ArgumentError } from "./error/ArgumentError";
 
 export { ArgumentError };
 
+function clean(obj: any) {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([_, v]) => v !== undefined)
+    );
+}
+
 export const read = async (args: Args, features: Feature[]): Promise<Partial<Config>> => {
 
     const config: Partial<Config> = {};
@@ -26,5 +32,6 @@ export const read = async (args: Args, features: Feature[]): Promise<Partial<Con
         config.extensions = args.extensions;
     }
 
-    return config;
+    // Returning a clean object to avoid undefined values
+    return clean(config);
 }

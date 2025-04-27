@@ -148,7 +148,7 @@ export interface Operator {
 export interface Cabazooka {
     configure: (command: Command) => Promise<void>;
     setLogger: (logger: Logger) => void;
-    read: (args: Args, features: Feature[]) => Promise<Partial<Config>>;
+    read: (args: Args) => Promise<Partial<Config>>;
     applyDefaults: (config: Partial<Config>) => Config;
     validate: (config: Config) => Promise<void>;
     operate: (config: Config) => Promise<Operator>;
@@ -173,9 +173,9 @@ export const create = (
         setLogger: (logger: Logger) => {
             options.logger = logger;
         },
-        read: async (pArgs: Args, features: Feature[]) => {
+        read: async (pArgs: Args) => {
             args = pArgs;
-            return read(args, features);
+            return read(args, options.features);
         },
         applyDefaults: (config: Partial<Config>) => applyDefaults(config, options.features, options.defaults || {}),
         validate: async (config: Config) => validate(config, options),

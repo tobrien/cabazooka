@@ -157,7 +157,7 @@ describe('Cabazooka Factory (`create`)', () => {
         });
 
         test('`read` should call the read module and store args', async () => {
-            const result = await cabazooka.read(testArgs, DEFAULT_FEATURES);
+            const result = await cabazooka.read(testArgs);
             expect(mockRead).toHaveBeenCalledTimes(1);
             expect(mockRead).toHaveBeenCalledWith(testArgs, DEFAULT_FEATURES);
             expect(result).toEqual(testConfig);
@@ -173,7 +173,7 @@ describe('Cabazooka Factory (`create`)', () => {
         test('`read` should use overridden features', async () => {
             const customFeatures: Feature[] = ['input', 'output'];
             const cabazookaCustom = create({ features: customFeatures });
-            await cabazookaCustom.read(testArgs, customFeatures);
+            await cabazookaCustom.read(testArgs);
             expect(mockRead).toHaveBeenCalledWith(testArgs, customFeatures);
         });
 
@@ -225,7 +225,7 @@ describe('Cabazooka Factory (`create`)', () => {
         });
 
         test('`operate` should call the operate module with config and stored args', async () => {
-            await cabazooka.read(testArgs, DEFAULT_FEATURES);
+            await cabazooka.read(testArgs);
             const operator = await cabazooka.operate(fullConfig);
 
             expect(mockCreateOperator).toHaveBeenCalledTimes(1);
@@ -252,7 +252,7 @@ describe('Cabazooka Factory (`create`)', () => {
                 logger: mockLogger
             });
 
-            await cabazookaCustom.read(testArgs, customFeatures);
+            await cabazookaCustom.read(testArgs);
             await cabazookaCustom.operate(fullConfig);
 
             expect(mockCreateOperator).toHaveBeenCalledWith(
