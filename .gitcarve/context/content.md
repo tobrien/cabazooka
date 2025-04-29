@@ -1,0 +1,1 @@
+Cabazooka allows you to product and consume information from a structured filesystem.
