@@ -7,6 +7,10 @@ on:
       - 'release/**'
       - 'feature/**'
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
