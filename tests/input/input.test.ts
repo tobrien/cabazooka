@@ -64,22 +64,25 @@ describe('Input: Create', () => {
     });
 
     test('should return an object with a process method', () => {
-        const inputModule = create(mockConfig, mockArgs, mockOptions);
+        const inputModule = create(mockConfig, mockOptions);
         expect(inputModule).toHaveProperty('process');
         expect(typeof inputModule.process).toBe('function');
     });
 
     test('process method should call the imported process function with correct arguments', async () => {
-        const inputModule = create(mockConfig, mockArgs, mockOptions);
+        const inputModule = create(mockConfig, mockOptions);
         await inputModule.process(mockCallback);
 
         expect(mockProcess).toHaveBeenCalledTimes(1);
         expect(mockProcess).toHaveBeenCalledWith(
             mockConfig,
-            mockArgs,
             mockOptions.features,
             mockOptions.logger,
-            mockCallback
+            mockCallback,
+            {
+                start: undefined,
+                end: undefined,
+            }
         );
     });
 
@@ -88,15 +91,18 @@ describe('Input: Create', () => {
         const specificArgs: Args = { ...mockArgs, recursive: true };
         const specificOptions: Options = { ...mockOptions, features: [...mockFeatures, 'structured-input'] };
 
-        const inputModule = create(mockConfig, specificArgs, specificOptions);
+        const inputModule = create(mockConfig, specificOptions);
         await inputModule.process(mockCallback);
 
         expect(mockProcess).toHaveBeenCalledWith(
             mockConfig,
-            specificArgs,
             specificOptions.features,
             specificOptions.logger,
-            mockCallback
+            mockCallback,
+            {
+                start: undefined,
+                end: undefined,
+            }
         );
     });
 });

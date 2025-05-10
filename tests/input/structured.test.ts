@@ -1,512 +1,363 @@
 import { jest } from '@jest/globals';
-import type { Feature, Logger } from '../../src/cabazooka';
-import { Config } from '../../src/cabazooka'; // Needed for config type
-import { DATE_FORMAT_YEAR_MONTH_DAY } from '../../src/constants';
-import type * as DatesUtil from '../../src/util/dates';
-import type * as StorageUtil from '../../src/util/storage';
+import { Feature, Logger } from 'cabazooka';
+import * as path from 'path';
 
-// --- Mock Dates ---
-const mockParse = jest.fn<DatesUtil.Utility['parse']>();
-const mockFormat = jest.fn<DatesUtil.Utility['format']>();
-const mockIsBefore = jest.fn<DatesUtil.Utility['isBefore']>();
-const mockIsAfter = jest.fn<DatesUtil.Utility['isAfter']>();
-const mockSubDays = jest.fn<DatesUtil.Utility['subDays']>(); // Added for default date range calc
-const mockNow = jest.fn<DatesUtil.Utility['now']>(); // Added for default date range calc
-const mockDateUtil = {
-    parse: mockParse,
-    format: mockFormat,
-    isBefore: mockIsBefore,
-    isAfter: mockIsAfter,
-    subDays: mockSubDays, // Add mocked methods that are actually used
-    now: mockNow,       // Add mocked methods that are actually used
-    // Add other methods from DatesUtil.Utility as needed, mocked to default values or specific implementations
-    today: jest.fn(() => '2023-10-27'), // Example: Provide basic mocks for unused methods if needed
-    date: jest.fn((d: string | number | Date | null | undefined) => (d instanceof Date ? d : new Date(d || '2023-10-27T00:00:00.000Z'))), // Handle different inputs
-    isValidDate: jest.fn(() => true),
-    addDays: jest.fn((d: Date, n: number) => new Date(d.getTime() + n * 86400000)),
-    addMonths: jest.fn((d: Date, n: number) => { const newD = new Date(d); newD.setMonth(d.getMonth() + n); return newD; }),
-    addYears: jest.fn((d: Date, n: number) => { const newD = new Date(d); newD.setFullYear(d.getFullYear() + n); return newD; }),
-    subMonths: jest.fn((d: Date, n: number) => { const newD = new Date(d); newD.setMonth(d.getMonth() - n); return newD; }),
-    subYears: jest.fn((d: Date, n: number) => { const newD = new Date(d); newD.setFullYear(d.getFullYear() - n); return newD; }),
-    startOfMonth: jest.fn((d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))),
-    endOfMonth: jest.fn((d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 23, 59, 59, 999))),
-    startOfYear: jest.fn((d: Date) => new Date(Date.UTC(d.getUTCFullYear(), 0, 1))),
-    endOfYear: jest.fn((d: Date) => new Date(Date.UTC(d.getUTCFullYear(), 11, 31, 23, 59, 59, 999))),
-} as DatesUtil.Utility;
-const mockDatesCreate = jest.fn<typeof DatesUtil.create>().mockReturnValue(mockDateUtil);
+// Define the callback type to match the expected signature
+type FileCallback = (file: string, date?: Date) => Promise<void>;
+
+// Mock dependencies with proper type annotations
 jest.unstable_mockModule('../../src/util/dates', () => ({
-    create: mockDatesCreate,
-    DATE_FORMAT_YEAR_MONTH_DAY: DATE_FORMAT_YEAR_MONTH_DAY, // Ensure constants are available if needed by the module
+    create: jest.fn(() => ({
+        now: jest.fn((): Date => new Date('2023-01-01T00:00:00Z')),
+        subDays: jest.fn((date: Date, days: number): Date => {
+            const result = new Date(date);
+            result.setUTCDate(result.getUTCDate() - days);
+            return result;
+        }),
+        parse: jest.fn((date: Date | string): Date => new Date(date)),
+        format: jest.fn((): string => '2023-01-01'),
+        isBefore: jest.fn((date1: Date, date2: Date): boolean => date1 < date2),
+    })),
 }));
 
-// --- Mock Storage ---
-const mockListFiles = jest.fn<StorageUtil.Utility['listFiles']>();
-const mockForEachFileIn = jest.fn<StorageUtil.Utility['forEachFileIn']>(); // Mock forEachFileIn instead of listFiles directly if used by structured.process
-const mockStorageCreate = jest.fn<typeof StorageUtil.create>().mockReturnValue({
-    listFiles: mockListFiles,
-    forEachFileIn: mockForEachFileIn, // Use the specific mock
-    // Add other methods if needed, mocked or otherwise
-    readFile: jest.fn<StorageUtil.Utility['readFile']>().mockResolvedValue(''), // Correct signature
-    writeFile: jest.fn<StorageUtil.Utility['writeFile']>().mockResolvedValue(undefined), // Correct signature
-    exists: jest.fn<StorageUtil.Utility['exists']>().mockResolvedValue(true),
-    isDirectory: jest.fn<StorageUtil.Utility['isDirectory']>().mockResolvedValue(false),
-    isFile: jest.fn<StorageUtil.Utility['isFile']>().mockResolvedValue(true),
-    isReadable: jest.fn<StorageUtil.Utility['isReadable']>().mockResolvedValue(true),
-    isWritable: jest.fn<StorageUtil.Utility['isWritable']>().mockResolvedValue(true),
-    isFileReadable: jest.fn<StorageUtil.Utility['isFileReadable']>().mockResolvedValue(true),
-    isDirectoryWritable: jest.fn<StorageUtil.Utility['isDirectoryWritable']>().mockResolvedValue(true),
-    isDirectoryReadable: jest.fn<StorageUtil.Utility['isDirectoryReadable']>().mockResolvedValue(true),
-    createDirectory: jest.fn<StorageUtil.Utility['createDirectory']>().mockResolvedValue(undefined),
-    readStream: jest.fn<StorageUtil.Utility['readStream']>(), // Provide types
-    hashFile: jest.fn<StorageUtil.Utility['hashFile']>().mockResolvedValue('dummyhash'),
-});
 jest.unstable_mockModule('../../src/util/storage', () => ({
-    create: mockStorageCreate,
+    create: jest.fn(() => ({
+        forEachFileIn: jest.fn(async (dir: string, callback: (file: string) => Promise<void>, options: any): Promise<void> => {
+            const mockFiles = [
+                `${dir}/2022/01/01/1200-test.txt`,
+                `${dir}/2022/02/15/0830-file.md`,
+                `${dir}/2023/01/01/0000-sample.json`,
+            ];
+            for (const file of mockFiles) {
+                await callback(file);
+            }
+        }),
+    })),
 }));
 
-// --- Dynamic Import ---
-// Use await import after mocks are set up
-const { process: processStructured } = await import('../../src/input/structured');
+// Use dynamic import to get the module after mocking
+const importStructured = async () => {
+    return await import('../../src/input/structured');
+};
 
-// --- Test Suite ---
-describe('Input: Structured Process', () => {
-    let mockLogger: Logger;
-    let mockCallback: jest.Mock<(file: string, date?: Date) => Promise<void>>;
-    let baseConfig: Partial<Config>;
-    const defaultFeatures: Feature[] = ['structured-input', 'extensions']; // Define features used
+// Create a mock logger
+const mockLogger: Logger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    verbose: jest.fn(),
+    silly: jest.fn(),
+};
 
+describe('structured.ts', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-
-        mockLogger = {
-            info: jest.fn(),
-            debug: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
-            verbose: jest.fn(),
-            silly: jest.fn(),
-        };
-
-        // @ts-ignore - Mock resolved value
-        mockCallback = jest.fn().mockResolvedValue(undefined);
-
-        // Default mock implementations
-        // Mock forEachFileIn to simulate finding files and calling the processor's callback
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            // Simulate finding files based on test case specifics if needed
-            // For now, assume files passed to the test setup are "found"
-        });
-
-        mockParse.mockImplementation((str, format) => {
-            // Basic mock, might need refinement based on actual usage
-            if (!str) throw new Error('Mock parse received null/undefined');
-            const date = str instanceof Date ? str : new Date(str); // Handle Date object input
-            if (isNaN(date.getTime())) {
-                // Try parsing with specific format if it looks like YYYY-M-D
-                if (typeof str === 'string' && format === DATE_FORMAT_YEAR_MONTH_DAY && /\d{4}-\d{1,2}-\d{1,2}/.test(str)) {
-                    const parts = str.split('-');
-                    const parsed = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
-                    if (!isNaN(parsed.getTime())) return parsed;
-                }
-                throw new Error(`Invalid date string for mock parse: ${str} with format ${format}`);
-            }
-            return date;
-        });
-        // Mock date comparisons based on simple Date comparison
-        mockIsBefore.mockImplementation((d1: Date, d2: Date) => d1 < d2);
-        mockIsAfter.mockImplementation((d1: Date, d2: Date) => d1 > d2);
-        // Mock now() and subDays() for default date range calculation
-        mockNow.mockReturnValue(new Date('2023-10-27T12:00:00.000Z'));
-        mockSubDays.mockImplementation((d: Date, n: number) => new Date(d.getTime() - n * 86400000));
-
-
-        baseConfig = { // Keep this minimal, specific tests will add needed properties
-            inputDirectory: '/input',
-            timezone: 'UTC',
-            // recursive: false, // Let structured.ts handle default based on structure
-            // inputStructure: 'none', // Set per test
-            inputFilenameOptions: [], // Set per test
-            extensions: ['txt', 'log'], // Add default extensions
-        };
     });
 
-    // --- Test Cases ---
-
-    test('should process files with "none" structure and date in filename', async () => {
-        const testConfig: Config = {
-            ...baseConfig,
-            inputStructure: 'none',
-            inputFilenameOptions: ['date'], // Expects date in filename
-        } as Config; // Cast to Config, ensure all required fields are present or defaults handle them
-        const files = ['/input/2023-10-26_file1.txt', '/input/2023-10-27_file2.log'];
-        const date1 = new Date('2023-10-26T00:00:00.000Z');
-        const date2 = new Date('2023-10-27T00:00:00.000Z');
-
-        // Simulate forEachFileIn calling the processor's callback
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            await cb(files[0]);
-            await cb(files[1]);
+    describe('getFilePattern', () => {
+        it('should create pattern with single extension', async () => {
+            const structured = await importStructured();
+            const pattern = structured.getFilePattern(['extensions'], ['txt'], mockLogger);
+            expect(pattern).toBe('**/*.txt');
         });
 
-        // Mock parse specifically for this test's expected calls
-        // Structured.ts uses parseDateFromFilePath, which needs careful mocking if not testing it directly
-        // For now, we assume parse will be called by internal logic correctly
-        mockParse.mockImplementation((str, format) => {
-            if (str === '2023-10-26' && format === 'YYYY-M-D-HHmm') return date1; // Adjust format based on actual usage in parseDateFromString
-            if (str === '2023-10-27' && format === 'YYYY-M-D-HHmm') return date2;
-            // Handle potential start/end date parsing by calculateDateRange
-            if (typeof str === 'string' && format === DATE_FORMAT_YEAR_MONTH_DAY) {
-                const parts = str.split('-');
-                const d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
-                if (!isNaN(d.getTime())) return d;
-            }
-            throw new Error(`Mock parse failed for: ${str} with format ${format}`);
+        it('should create pattern with multiple extensions', async () => {
+            const structured = await importStructured();
+            const pattern = structured.getFilePattern(['extensions'], ['txt', 'md', 'json'], mockLogger);
+            expect(pattern).toBe('**/*.{txt,md,json}');
         });
 
+        it('should create pattern without extensions', async () => {
+            const structured = await importStructured();
+            const pattern = structured.getFilePattern([], [], mockLogger);
+            expect(pattern).toBe('**/*.*');
+        });
 
-        const count = await processStructured(
-            testConfig.inputStructure || 'none',
-            testConfig.inputFilenameOptions || [],
-            testConfig.extensions || [],
-            testConfig.timezone,
-            undefined, // start date
-            undefined, // end date
-            defaultFeatures,
-            mockLogger,
-            testConfig.inputDirectory!,
-            mockCallback
-        );
-
-        expect(mockStorageCreate).toHaveBeenCalledWith({ log: mockLogger.debug });
-        expect(mockDatesCreate).toHaveBeenCalledWith({ timezone: testConfig.timezone });
-        expect(mockLogger.info).toHaveBeenCalledWith("Processing structured input with structure \"none\" in %s for date range: {\"start\":\"2023-09-26T12:00:00.000Z\",\"end\":\"2023-10-27T12:00:00.000Z\"}", "/input");
-        expect(mockForEachFileIn).toHaveBeenCalledWith(testConfig.inputDirectory, expect.any(Function), { pattern: expect.stringContaining('*.{txt,log}') });
-        // Check the callback was called correctly by the simulated forEachFileIn->processStructuredFile logic
-        expect(mockCallback).toHaveBeenCalledTimes(2);
-        // Note: The exact date object might differ slightly due to timezone/UTC handling in mocks vs implementation. Use toEqual for deep comparison.
-        expect(mockCallback).toHaveBeenCalledWith(files[0], expect.any(Date));
-        expect(mockCallback).toHaveBeenCalledWith(files[1], expect.any(Date));
-        expect(count).toBe(2);
+        it('should throw error for extensions starting with a dot', async () => {
+            const structured = await importStructured();
+            expect(() => {
+                structured.getFilePattern(['extensions'], ['.txt'], mockLogger);
+            }).toThrow('Invalid extension format');
+        });
     });
 
-    test('should process files with "day" structure', async () => {
-        const testConfig: Config = {
-            ...baseConfig,
-            inputStructure: 'day', // Implies year/month/day path
-            inputFilenameOptions: [], // No date/time in filename needed for this test
-            // recursive: true, // Let structured.ts handle default based on structure
-        } as Config;
-        const files = ['/input/2023/10/26/file1.txt', '/input/2023/10/27/file2.log'];
-        const date1 = new Date('2023-10-26T00:00:00.000Z');
-        const date2 = new Date('2023-10-27T00:00:00.000Z');
-
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            await cb(files[0]);
-            await cb(files[1]);
+    describe('parseDateFromString', () => {
+        it('should parse YYYY-M-D-HHmm format with time', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromString('2022-1-15-0830', 'YYYY-M-D-HHmm', true);
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
         });
 
-        // Mock parse for start/end date range calculation if needed
-        mockParse.mockImplementation((str, format) => {
-            if (typeof str === 'string' && format === DATE_FORMAT_YEAR_MONTH_DAY) {
-                const parts = str.split('-');
-                const d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
-                if (!isNaN(d.getTime())) return d;
-            }
-            // No direct file date parsing expected here, relies on parseDateFromFilePath internal logic
-            throw new Error(`Mock parse failed for: ${str} with format ${format}`);
+        it('should parse YYYY-M-D-HHmm format without time', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromString('2022-1-15', 'YYYY-M-D-HHmm', false);
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 0, 0)));
         });
 
-        const count = await processStructured(
-            testConfig.inputStructure || 'none',
-            testConfig.inputFilenameOptions || [],
-            testConfig.extensions || [],
-            testConfig.timezone,
-            undefined, // start date
-            undefined, // end date
-            defaultFeatures,
-            mockLogger,
-            testConfig.inputDirectory!,
-            mockCallback
-        );
+        it('should parse M-D-HHmm format with time', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromString('1-15-0830', 'M-D-HHmm', true, 2022);
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
+        });
 
-        expect(mockForEachFileIn).toHaveBeenCalledWith(testConfig.inputDirectory, expect.any(Function), { pattern: expect.stringContaining('*.{txt,log}') });
-        expect(mockCallback).toHaveBeenCalledTimes(2);
-        // The date comes from parseDateFromFilePath internal logic now
-        expect(mockCallback).toHaveBeenCalledWith(files[0], expect.any(Date));
-        expect(mockCallback).toHaveBeenCalledWith(files[1], expect.any(Date));
-        expect(count).toBe(2);
+        it('should parse D-HHmm format with time', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromString('15-0830', 'D-HHmm', true, 2022, 0);
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
+        });
+
+        it('should parse HHmm format with time', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromString('0830', 'HHmm', true, 2022, 0, 15);
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
+        });
+
+        it('should return null for invalid date', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromString('invalid', 'YYYY-M-D-HHmm', true);
+            expect(date).toBeNull();
+        });
+
+        it('should return null for out of range values', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromString('2022-13-32-2460', 'YYYY-M-D-HHmm', true);
+            expect(date).toBeNull();
+        });
     });
 
-    test('should filter files by start and end date', async () => {
-        const startDateStr = '2023-10-27';
-        const endDateStr = '2023-10-28'; // Inclusive YYYY-M-D
-        const testConfig: Config = {
-            ...baseConfig,
-            inputStructure: 'none',
-            inputFilenameOptions: ['date'], // Expects date in filename
-        } as Config;
-        const files = ['/input/2023-10-26_file1.txt', '/input/2023-10-27_file2.log', '/input/2023-10-28_file3.txt'];
-        const date1 = new Date('2023-10-26T00:00:00.000Z');
-        const date2 = new Date('2023-10-27T00:00:00.000Z');
-        const date3 = new Date('2023-10-28T00:00:00.000Z');
-        const rangeStart = new Date('2023-10-27T00:00:00.000Z'); // calculateDateRange uses start of day
-        const rangeEnd = new Date('2023-10-28T00:00:00.000Z'); // calculateDateRange uses start of *next* day for end boundary
-
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            await cb(files[0]);
-            await cb(files[1]);
-            await cb(files[2]);
+    describe('isDateInRange', () => {
+        it('should return true when date is in range', async () => {
+            const structured = await importStructured();
+            const date = new Date('2022-02-15');
+            const range = {
+                start: new Date('2022-01-01'),
+                end: new Date('2022-03-01')
+            };
+            expect(structured.isDateInRange(date, range)).toBe(true);
         });
 
-        // Mock parse for file dates AND start/end date range calculation
-        mockParse.mockImplementation((str, format) => {
-            // File dates (assuming called by parseDateFromFilePath)
-            if (str === '2023-10-26' && format === 'YYYY-M-D-HHmm') return date1;
-            if (str === '2023-10-27' && format === 'YYYY-M-D-HHmm') return date2;
-            if (str === '2023-10-28' && format === 'YYYY-M-D-HHmm') return date3;
-            // Start/End dates (called by calculateDateRange)
-            if (str === startDateStr && format === DATE_FORMAT_YEAR_MONTH_DAY) return rangeStart;
-            if (str === endDateStr && format === DATE_FORMAT_YEAR_MONTH_DAY) {
-                // calculateDateRange adds a day to the parsed end date for the exclusive boundary
-                const parsedEnd = new Date('2023-10-27T00:00:00.000Z');
-                return new Date(parsedEnd.getTime() + 86400000); // Return the start of the *next* day
-            }
-            throw new Error(`Mock parse failed for: ${str} with format ${format}`);
+        it('should return false when date is before range', async () => {
+            const structured = await importStructured();
+            const date = new Date('2021-12-31');
+            const range = {
+                start: new Date('2022-01-01'),
+                end: new Date('2022-03-01')
+            };
+            expect(structured.isDateInRange(date, range)).toBe(false);
         });
 
-        // Mock isBefore/isAfter for isDateInRange check
-        // isDateInRange uses '<' and '>='
-        mockIsBefore.mockImplementation((d1: Date, d2: Date) => d1 < d2); // Used for date < startDate check (false)
-        mockIsAfter.mockImplementation((d1: Date, d2: Date) => d1 >= d2); // Used for date >= endDate check (true)
+        it('should return false when date is on or after end date (exclusive)', async () => {
+            const structured = await importStructured();
+            const date = new Date('2022-03-01');
+            const range = {
+                start: new Date('2022-01-01'),
+                end: new Date('2022-03-01')
+            };
+            expect(structured.isDateInRange(date, range)).toBe(false);
+        });
 
-
-        const count = await processStructured(
-            testConfig.inputStructure || 'none',
-            testConfig.inputFilenameOptions || [],
-            testConfig.extensions || [],
-            testConfig.timezone,
-            startDateStr, // Pass start date string
-            endDateStr,   // Pass end date string
-            defaultFeatures,
-            mockLogger,
-            testConfig.inputDirectory!,
-            mockCallback
-        );
-
-        // Check that calculateDateRange called parse correctly
-        expect(mockParse).toHaveBeenCalledWith(startDateStr, DATE_FORMAT_YEAR_MONTH_DAY);
-        expect(mockParse).toHaveBeenCalledWith(endDateStr, DATE_FORMAT_YEAR_MONTH_DAY);
-
-        // Check that the callback was invoked only for the file within the range
-        expect(mockCallback).toHaveBeenCalledTimes(1);
-        expect(mockCallback).toHaveBeenCalledWith(files[1], expect.any(Date));
-        expect(count).toBe(1);
-        // Verify debug logs for skipped files (optional)
-        expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Skipping file %s'), files[0], expect.any(String), expect.any(String));
-        expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Skipping file %s'), files[2], expect.any(String), expect.any(String));
-
+        it('should return true when range is undefined', async () => {
+            const structured = await importStructured();
+            const date = new Date('2022-02-15');
+            expect(structured.isDateInRange(date, undefined)).toBe(true);
+        });
     });
 
-    test('should handle files with unparseable dates', async () => {
-        const testConfig: Config = {
-            ...baseConfig,
-            inputStructure: 'none',
-            inputFilenameOptions: ['date'],
-        } as Config;
-        const files = ['/input/invalid-date_file1.txt', '/input/2023-10-27_file2.log'];
-        const date2 = new Date('2023-10-27T00:00:00.000Z');
+    describe('calculateDateRange', () => {
+        it('should use default range when no dates provided', async () => {
+            const structured = await importStructured();
+            const range = structured.calculateDateRange('UTC', undefined as any, undefined as any);
 
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            await cb(files[0]);
-            await cb(files[1]);
+            // Now should be 2023-01-01 from our mock
+            expect(range.end).toEqual(new Date('2023-01-01T00:00:00Z'));
+
+            // Start should be 31 days before
+            const expected = new Date('2023-01-01T00:00:00Z');
+            expected.setUTCDate(expected.getUTCDate() - 31);
+            expect(range.start).toEqual(expected);
         });
 
-        // Mock parseDateFromString behavior via parse (simplified)
-        mockParse.mockImplementation((str, format) => {
-            if (str === 'invalid-date' && format === 'YYYY-M-D-HHmm') throw new Error('Simulated parse error'); // Simulate parse failure
-            if (str === '2023-10-27' && format === 'YYYY-M-D-HHmm') return date2;
-            // Handle potential start/end date parsing by calculateDateRange
-            if (typeof str === 'string' && format === DATE_FORMAT_YEAR_MONTH_DAY) {
-                const parts = str.split('-');
-                const d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
-                if (!isNaN(d.getTime())) return d;
-            }
-            throw new Error(`Mock parse failed for: ${str} with format ${format}`);
+        it('should use provided start date', async () => {
+            const structured = await importStructured();
+            const startDate = new Date('2022-12-01');
+            const range = structured.calculateDateRange('UTC', startDate, undefined as any);
+
+            expect(range.start).toEqual(startDate);
+            expect(range.end).toEqual(new Date('2023-01-01T00:00:00Z'));
         });
 
-        // We need to adjust the test as parseDateFromString now returns null on error, logging a warning
-        const count = await processStructured(
-            testConfig.inputStructure || 'none',
-            testConfig.inputFilenameOptions || [],
-            testConfig.extensions || [],
-            testConfig.timezone,
-            undefined, undefined, // No date range filter
-            defaultFeatures,
-            mockLogger,
-            testConfig.inputDirectory!,
-            mockCallback
-        );
+        it('should use provided end date', async () => {
+            const structured = await importStructured();
+            const endDate = new Date('2022-12-31');
+            const range = structured.calculateDateRange('UTC', undefined as any, endDate);
 
-        expect(mockForEachFileIn).toHaveBeenCalled();
-        // Check logger warning for the unparseable file
-        expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-        expect(mockLogger.warn).toHaveBeenCalledWith(
-            "Could not parse date for file %s with structure \"%s\" (filename base: \"%s\", path parts: %s)", "/input/invalid-date_file1.txt", "none", "invalid-date_file1", ""
-        );
-        expect(mockCallback).toHaveBeenCalledTimes(1); // Only the valid one
-        expect(mockCallback).toHaveBeenCalledWith(files[1], expect.any(Date));
-        expect(count).toBe(1); // Count is based on successful callbacks
+            const expected = new Date('2023-01-01T00:00:00Z');
+            expected.setUTCDate(expected.getUTCDate() - 31);
+            expect(range.start).toEqual(expected);
+            expect(range.end).toEqual(endDate);
+        });
     });
 
-    test('should handle errors during callback execution', async () => {
-        const testConfig: Config = {
-            ...baseConfig,
-            inputStructure: 'none',
-            inputFilenameOptions: ['date'],
-        } as Config;
-        const files = ['/input/2023-10-26_error.txt', '/input/2023-10-27_success.txt'];
-        const date1 = new Date('2023-10-26T00:00:00.000Z');
-        const date2 = new Date('2023-10-27T00:00:00.000Z');
-        const callbackError = new Error('Callback failed');
-
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            await cb(files[0]);
-            await cb(files[1]);
-        });
-        mockParse.mockImplementation((str, format) => {
-            if (str === '2023-10-26' && format === 'YYYY-M-D-HHmm') return date1;
-            if (str === '2023-10-27' && format === 'YYYY-M-D-HHmm') return date2;
-            if (typeof str === 'string' && format === DATE_FORMAT_YEAR_MONTH_DAY) {
-                const parts = str.split('-');
-                const d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
-                if (!isNaN(d.getTime())) return d;
-            }
-            throw new Error(`Mock parse failed for: ${str} with format ${format}`);
-        });
-        mockCallback.mockImplementation(async (file, date) => {
-            if (file.includes('error.txt')) {
-                throw callbackError;
-            }
-            // Implicitly return undefined for success case
+    describe('parseDateFromFilePath', () => {
+        it('should parse date from filename with "none" structure', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromFilePath(
+                '2022-01-15-0830-test.txt',
+                '2022-01-15-0830-test.txt',
+                'none',
+                true,
+                mockLogger
+            );
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
         });
 
-        const count = await processStructured(
-            testConfig.inputStructure || 'none',
-            testConfig.inputFilenameOptions || [],
-            testConfig.extensions || [],
-            testConfig.timezone,
-            undefined, undefined, // No date range filter
-            defaultFeatures,
-            mockLogger,
-            testConfig.inputDirectory!,
-            mockCallback
-        );
+        it('should parse date from path with "year" structure', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromFilePath(
+                '2022/01-15-0830-test.txt',
+                '01-15-0830-test.txt',
+                'year',
+                true,
+                mockLogger
+            );
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
+        });
 
-        expect(mockCallback).toHaveBeenCalledTimes(2);
-        expect(mockCallback).toHaveBeenCalledWith(files[0], expect.any(Date));
-        expect(mockCallback).toHaveBeenCalledWith(files[1], expect.any(Date));
-        expect(mockLogger.error).toHaveBeenCalledTimes(1);
-        // The error log comes from processStructuredFile's catch block
-        expect(mockLogger.error).toHaveBeenCalledWith(
-            'Error processing file %s: %s\n%s',
-            files[0],
-            callbackError.message,
-            callbackError.stack
-        );
-        expect(count).toBe(1); // Only successful callbacks count
+        it('should parse date from path with "month" structure', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromFilePath(
+                '2022/01/15-0830-test.txt',
+                '15-0830-test.txt',
+                'month',
+                true,
+                mockLogger
+            );
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
+        });
+
+        it('should parse date from path with "day" structure', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromFilePath(
+                '2022/01/15/0830-test.txt',
+                '0830-test.txt',
+                'day',
+                true,
+                mockLogger
+            );
+            expect(date).toEqual(new Date(Date.UTC(2022, 0, 15, 8, 30)));
+        });
+
+        it('should return null for invalid path format', async () => {
+            const structured = await importStructured();
+            const date = structured.parseDateFromFilePath(
+                'invalid/path',
+                'invalid.txt',
+                'year',
+                true,
+                mockLogger
+            );
+            expect(date).toBeNull();
+        });
     });
 
-    test('should return 0 if no files are found', async () => {
-        const testConfig: Config = { ...baseConfig } as Config;
-        // Simulate forEachFileIn finding no files
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            // Do nothing, no files found
+    describe('processStructuredFile', () => {
+        it('should process file when date is in range', async () => {
+            const structured = await importStructured();
+            const callback = jest.fn() as unknown as FileCallback;
+            const dateRange = {
+                start: new Date('2022-01-01'),
+                end: new Date('2023-01-01')
+            };
+
+            const result = await structured.processStructuredFile(
+                '/input/2022/01/15/0830-test.txt',
+                '/input',
+                'day',
+                true,
+                callback,
+                '**/*.*',
+                dateRange,
+                mockLogger
+            );
+
+            expect(result).toBe(true);
+            expect(callback).toHaveBeenCalledWith(
+                '/input/2022/01/15/0830-test.txt',
+                expect.any(Date)
+            );
         });
 
-        const count = await processStructured(
-            testConfig.inputStructure || 'none',
-            testConfig.inputFilenameOptions || [],
-            testConfig.extensions || [],
-            testConfig.timezone,
-            undefined, undefined, // No date range filter
-            defaultFeatures,
-            mockLogger,
-            testConfig.inputDirectory!,
-            mockCallback
-        );
+        it('should skip file when date is out of range', async () => {
+            const structured = await importStructured();
+            const callback = jest.fn() as unknown as FileCallback;
+            const dateRange = {
+                start: new Date('2023-01-01'),
+                end: new Date('2023-02-01')
+            };
 
-        expect(mockForEachFileIn).toHaveBeenCalled();
-        // CalculateDateRange uses now() and subDays() for defaults when start/end are undefined
-        expect(mockNow).toHaveBeenCalled();
-        expect(mockSubDays).toHaveBeenCalled();
-        expect(mockParse).not.toHaveBeenCalledWith(undefined, expect.any(String)); // Ensure parse wasn't called with undefined
-        expect(mockCallback).not.toHaveBeenCalled();
-        expect(count).toBe(0);
+            const result = await structured.processStructuredFile(
+                '/input/2022/01/15/0830-test.txt',
+                '/input',
+                'day',
+                true,
+                callback,
+                '**/*.*',
+                dateRange,
+                mockLogger
+            );
+
+            expect(result).toBe(false);
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        it('should skip if file path cannot be parsed', async () => {
+            const structured = await importStructured();
+            const callback = jest.fn() as unknown as FileCallback;
+            const dateRange = {
+                start: new Date('2022-01-01'),
+                end: new Date('2023-01-01')
+            };
+
+            const result = await structured.processStructuredFile(
+                '/input',
+                '/input',
+                'day',
+                true,
+                callback,
+                '**/*.*',
+                dateRange,
+                mockLogger
+            );
+
+            expect(result).toBe(false);
+            expect(callback).not.toHaveBeenCalled();
+        });
     });
 
-    test('should return 0 if no files match date range', async () => {
-        const startDateStr = '2024-01-01'; // Range outside file dates
-        const endDateStr = '2024-01-01';
-        const testConfig: Config = {
-            ...baseConfig,
-            inputStructure: 'none',
-            inputFilenameOptions: ['date'],
-        } as Config;
-        const files = ['/input/2023-10-26_file1.txt', '/input/2023-10-27_file2.log'];
-        const date1 = new Date('2023-10-26T00:00:00.000Z');
-        const date2 = new Date('2023-10-27T00:00:00.000Z');
-        const rangeStart = new Date('2024-01-01T00:00:00.000Z');
-        const rangeEnd = new Date('2024-01-02T00:00:00.000Z'); // Start of next day
+    describe('process', () => {
+        it('should process files in directory', async () => {
+            const structured = await importStructured();
+            const callback = jest.fn() as unknown as FileCallback;
+            const features: Feature[] = [];
+            const extensions = ['txt', 'md', 'json'];
 
-        mockForEachFileIn.mockImplementation(async (dir, cb, options) => {
-            await cb(files[0]);
-            await cb(files[1]);
+            const fileCount = await structured.process(
+                'day',
+                ['time'],
+                extensions,
+                'UTC',
+                new Date('2022-01-01'),
+                new Date('2023-01-01'),
+                features,
+                mockLogger,
+                '/input',
+                callback
+            );
+
+            // Our mock has 3 files
+            expect(fileCount).toBe(2);
+            expect(callback).toHaveBeenCalledTimes(2);
         });
-        mockParse.mockImplementation((str, format) => {
-            if (str === '2023-10-26' && format === 'YYYY-M-D-HHmm') return date1;
-            if (str === '2023-10-27' && format === 'YYYY-M-D-HHmm') return date2;
-            if (str === startDateStr && format === DATE_FORMAT_YEAR_MONTH_DAY) return rangeStart;
-            if (str === endDateStr && format === DATE_FORMAT_YEAR_MONTH_DAY) {
-                const parsedEnd = new Date('2024-01-01T00:00:00.000Z');
-                return new Date(parsedEnd.getTime() + 86400000); // Return start of next day
-            }
-            throw new Error(`Mock parse failed for: ${str} with format ${format}`);
-        });
-        // Mock date comparisons such that no files fall in range
-        mockIsBefore.mockImplementation((d1: Date, d2: Date) => d1 < d2); // Both files are before rangeStart
-        mockIsAfter.mockImplementation((d1: Date, d2: Date) => d1 >= d2); // Neither file is >= rangeEnd
-
-
-        const count = await processStructured(
-            testConfig.inputStructure || 'none',
-            testConfig.inputFilenameOptions || [],
-            testConfig.extensions || [],
-            testConfig.timezone,
-            startDateStr,
-            endDateStr,
-            defaultFeatures,
-            mockLogger,
-            testConfig.inputDirectory!,
-            mockCallback
-        );
-
-        expect(mockForEachFileIn).toHaveBeenCalled();
-        expect(mockParse).toHaveBeenCalledWith(startDateStr, DATE_FORMAT_YEAR_MONTH_DAY);
-        expect(mockParse).toHaveBeenCalledWith(endDateStr, DATE_FORMAT_YEAR_MONTH_DAY);
-        // Check debug logs for skipped files
-        expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Skipping file %s'), files[0], expect.any(String), expect.any(String));
-        expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Skipping file %s'), files[1], expect.any(String), expect.any(String));
-        expect(mockCallback).not.toHaveBeenCalled();
-        expect(count).toBe(0);
     });
-
-    // Add more tests for:
-    // - Different combinations of inputStructure ('year', 'month') and inputFilenameOptions ('time', 'subject' - if relevant for parsing)
-    // - Edge cases for date parsing (e.g., different filename formats) -> Covered partially by 'unparseable' test
-    // - Handling of non-Error objects thrown during callback -> Covered by callback error test
-    // - Specific recursive/non-recursive behavior with listFiles options based on structure -> Handled internally by forEachFileIn/glob
-    // - Timezone considerations (ensure DatesUtil is created with correct timezone and dates are handled correctly) -> Mocks use UTC, process uses config timezone
-    // - Missing start/end date (should use defaults or no filtering) -> Covered by several tests not passing start/end
-    // - Invalid start/end date format provided in config -> Validation layer should catch this, but could add test if needed.
-
 });

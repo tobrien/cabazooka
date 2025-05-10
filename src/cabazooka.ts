@@ -137,10 +137,15 @@ export const ConfigSchema = z.object({
     extensions: z.array(z.string()).optional(),
 });
 
+export interface DateRange {
+    start: Date;
+    end: Date;
+}
+
 export type Config = z.infer<typeof ConfigSchema>;
 
 export interface Operator {
-    process: (callback: (file: string) => Promise<void>) => Promise<void>;
+    process: (callback: (file: string) => Promise<void>, dateRange?: Partial<DateRange>) => Promise<void>;
     constructFilename: (createDate: Date, type: string, hash: string, options?: { subject?: string }) => Promise<string>;
     constructOutputDirectory: (createDate: Date) => Promise<string>;
 }
