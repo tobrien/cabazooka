@@ -37,4 +37,4 @@ export const ALLOWED_INPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as Fil
 export const ALLOWED_OUTPUT_STRUCTURES = ['none', 'year', 'month', 'day'] as FilesystemStructure[];
 export const ALLOWED_OUTPUT_FILENAME_OPTIONS = ['date', 'time', 'subject'] as FilenameOption[];
 
-export const ALLOWED_EXTENSIONS = ['md'] as string[];
+export const ALLOWED_EXTENSIONS = ['md', 'txt'] as string[];

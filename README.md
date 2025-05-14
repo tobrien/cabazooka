@@ -63,8 +63,11 @@ const instance = Cabazooka.create({
     timezone: 'America/New_York',
     extensions: ['md', 'txt'],
     outputStructure: 'month',
+    outputDirectory: './dist',
   }
 });
+
+
 
 // Configure your command
 const program = new Command();
@@ -72,10 +75,22 @@ await instance.configure(program);
 
 // Parse arguments
 program.parse(process.argv);
-const options = program.opts();
+const cliArgs = program.opts();
 
-// Validate options
-const config = await instance.validate(options);
+// Cabazooka reads its relevant options from the raw CLI args
+const cabazookaCliConfig = await instance.read(cliArgs);
+
+// Your overall application might have more options than Cabazooka, merge after reading from Cabazooka
+let config = {
+  ...cabazookaCliConfig,
+  ...cliArgs,
+}
+
+// Apply Cabazooka's configured defaults and transformations again on the merged object
+config = instance.applyDefaults(config);
+
+// Validate options - returns nothing but throws an error if there is a problem
+await instance.validate(config);
 
 // Use the operator to process files
 const operator = await instance.operate(config);
@@ -253,14 +268,20 @@ import { z } from 'zod'; // Assuming Zod is used for schema validation, similar 
 // Define a Zod schema for your application-specific configurations, if any
 // For this example, we'll assume no extra app-specific configs beyond Cabazooka's.
 // If you had them, you'd define them here:
-const AppSpecificSchema = z.object({
-   myCustomOption: z.string().optional(),
- });
+const ConfigSchema = z.object({
+   myCustomOption: z.string().optional()
+});
 
 const clean = (obj: any) => {
     return Object.fromEntries(
         Object.entries(obj).filter(([_, v]) => v !== undefined)
     );
+}
+
+type Config = z.infer<typeof ConfigSchema> & Cabazooka.Config & GiveMeTheConfig.Config;
+
+const DEFAULT_CONFIG =  {
+  myCustomOption: 'my-default',
 }
 
 async function main() {
@@ -273,6 +294,7 @@ async function main() {
     },
     allowed: {
       // Define allowed values if needed, e.g., for outputStructures
+      extensions: ['md', 'txt']
     },
     features: Cabazooka.DEFAULT_FEATURES, // Specify features
     addDefaults: false, // Important for commander integration when also using givemetheconfig
@@ -281,8 +303,9 @@ async function main() {
   // 2. Prepare the combined configuration shape for GiveMeTheConfig
   // This would merge Cabazooka.ConfigSchema with any app-specific schemas
   const mergedShapeProperties = {
+    ...GiveMeTheConfig.ConfigSchema.partial().shape,
     ...Cabazooka.ConfigSchema.partial().shape, // Use Cabazooka's Zod schema
-    ...AppSpecificSchema.partial().shape, // Merge your app-specific schema if you have one
+    ...ConfigSchema.partial().shape, // Merge your app-specific schema if you have one
   };
   const combinedShape = z.object(mergedShapeProperties);
 
@@ -293,6 +316,7 @@ async function main() {
       // Add other givemetheconfig defaults if needed
     },
     configShape: combinedShape.shape, // Provide the combined shape for validation
+    isRequired: false,
     // Other givemetheconfig options like configName can be set here.
     // Source file paths are typically managed via CLI options added by givemetheconfig.configure()
     // and then used by givemetheconfig.read()
@@ -325,7 +349,7 @@ async function main() {
   // Then applies cabazooka.applyDefaults(mergedConfig).
 
   let mergedConfig = {
-    ...cabazooka.getDefaults(), // Start with Cabazooka internal defaults
+    ...DEFAULT_CONFIG, // Start with your application's internal defaults
     ...clean(fileConfig),             // Apply values from config file
     ...clean(cabazookaCliConfig),     // Apply Cabazooka-specific CLI args
     ...clean(cliArgs),                // Apply any other app-specific CLI args
@@ -347,11 +371,11 @@ async function main() {
   console.log('Final configuration for Cabazooka:', finalCabazookaConfig);
 
   // 6. Operate with Cabazooka
-  const operator = await cabazooka.operate(finalCabazookaConfig);
-  await operator.process(async (file) => {
-    console.log('Processing file:', file);
-    // Your file processing logic here
-  });
+  // const operator = await cabazooka.operate(finalCabazookaConfig);
+  // await operator.process(async (file) => {
+  //   console.log('Processing file:', file);
+  //   // Your file processing logic here
+  // });
 }
 
 main().catch(console.error);

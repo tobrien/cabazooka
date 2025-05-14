@@ -5,9 +5,20 @@ import { Command } from 'commander';
 import * as GiveMeTheConfig from '@tobrien/givemetheconfig';
 import { z } from 'zod';
 
+const mockProcess = {
+    argv: ['node', 'test'], // Default argv
+    stdout: {
+        write: () => { }, // Mock stdout.write
+    },
+    stderr: {
+        write: () => { }, // Mock stderr.write
+    },
+    exit: () => { },    // Mock process.exit
+};
+
 export default {
     "globals": {
-        'process': process
+        'process': mockProcess
     },
     "require": {
         '@tobrien/cabazooka': Cabazooka, // Adjusted key and value
@@ -85,7 +96,8 @@ export default {
             // Fallback to codeForBabel if transformation somehow fails or returns nothing
             return transformed?.code || codeForBabel;
         } catch (error) {
-            // console.error("Babel transformation error in markdown-doctest-setup:", error); // Keep commented
+            // eslint-disable-next-line no-console
+            console.error("Babel transformation error in markdown-doctest-setup:", error); // Keep commented
             // In case of error, return the processed (possibly wrapped) code to help debug
             return codeForBabel;
         }
