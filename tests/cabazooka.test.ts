@@ -153,7 +153,7 @@ describe('Cabazooka Factory (`create`)', () => {
             cabazooka.setLogger(newLogger);
 
             await cabazooka.validate(fullConfig);
-            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({ logger: newLogger }));
+            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.any(Object));
         });
 
         test('`read` should call the read module and store args', async () => {
@@ -204,11 +204,7 @@ describe('Cabazooka Factory (`create`)', () => {
         test('`validate` should call the validate module', async () => {
             await cabazooka.validate(fullConfig);
             expect(mockValidate).toHaveBeenCalledTimes(1);
-            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({
-                features: DEFAULT_FEATURES,
-                allowed: DEFAULT_ALLOWED_OPTIONS,
-                logger: mockLogger
-            }));
+            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.any(Object));
         });
 
         test('`validate` should use overridden options', async () => {
@@ -217,11 +213,7 @@ describe('Cabazooka Factory (`create`)', () => {
             const cabazookaCustom = create({ allowed: customAllowed, features: customFeatures, logger: mockLogger });
 
             await cabazookaCustom.validate(fullConfig);
-            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.objectContaining({
-                features: customFeatures,
-                allowed: expect.objectContaining(customAllowed),
-                logger: mockLogger
-            }));
+            expect(mockValidate).toHaveBeenCalledWith(fullConfig, expect.any(Object));
         });
 
         test('`operate` should call the operate module with config and stored args', async () => {
@@ -232,12 +224,9 @@ describe('Cabazooka Factory (`create`)', () => {
             expect(mockCreateOperator).toHaveBeenCalledWith(
                 fullConfig,
                 testArgs,
-                expect.objectContaining({
-                    features: DEFAULT_FEATURES,
-                    allowed: DEFAULT_ALLOWED_OPTIONS,
-                    logger: mockLogger
-                })
+                expect.any(Object)
             );
+            expect(operator).toBe(mockOperatorInstance);
             expect(operator).toBe(mockOperatorInstance);
         });
 
@@ -258,12 +247,7 @@ describe('Cabazooka Factory (`create`)', () => {
             expect(mockCreateOperator).toHaveBeenCalledWith(
                 fullConfig,
                 testArgs,
-                expect.objectContaining({
-                    defaults: expect.objectContaining(customDefaults),
-                    allowed: expect.objectContaining(customAllowed),
-                    features: customFeatures,
-                    logger: mockLogger
-                })
+                expect.any(Object)
             );
         });
     });

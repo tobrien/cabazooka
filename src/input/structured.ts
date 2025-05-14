@@ -111,9 +111,9 @@ export const parseDateFromString = (
             case 'HHmm':
                 if (year === undefined || month === undefined || day === undefined) return null;
                 if (shouldParseTime) {
-                    if (cleanedDateStr.length !== 4) return null;
-                    h = parseInt(cleanedDateStr.substring(0, 2), 10);
-                    mi = parseInt(cleanedDateStr.substring(2, 4), 10);
+                    if (parts[0].length !== 4) return null;
+                    h = parseInt(parts[0].substring(0, 2), 10);
+                    mi = parseInt(parts[0].substring(2, 4), 10);
                 } // Else h=0, mi=0 (set by defaults)
                 break;
             default:
@@ -178,7 +178,7 @@ export const isDateInRange = (date: Date, range?: DateRange): boolean => {
     return true;
 };
 
-export const calculateDateRange = (timezone: string, startDate: string | undefined, endDate: string | undefined): DateRange => {
+export const calculateDateRange = (timezone: string, startDate: Date, endDate: Date): DateRange => {
 
     // Create date utility after timezone is validated
     const dateUtil = Dates.create({ timezone });
@@ -351,8 +351,9 @@ export const process = async (
     inputFilenameOptions: FilenameOption[],
     extensions: string[],
     timezone: string,
-    start: string | undefined,
-    end: string | undefined,
+    start: Date,
+    end: Date,
+    limit: number | undefined,
     features: Feature[],
     logger: Logger,
     inputDirectory: string,
@@ -402,7 +403,7 @@ export const process = async (
         if (processed) {
             fileCount++;
         }
-    }, { pattern: filePattern });
+    }, { pattern: filePattern, limit });
 
     return fileCount;
 }

@@ -90,7 +90,7 @@ describe('Operator Factory (create)', () => {
     test('should call Input.create and Output.create with correct arguments', async () => {
         // This test implicitly runs create via beforeEach
         expect(mockInputCreate).toHaveBeenCalledTimes(1);
-        expect(mockInputCreate).toHaveBeenCalledWith(baseConfig, baseArgs, baseOptions);
+        expect(mockInputCreate).toHaveBeenCalledWith(baseConfig, baseOptions);
         expect(mockOutputCreate).toHaveBeenCalledTimes(1);
         expect(mockOutputCreate).toHaveBeenCalledWith(baseConfig, baseOptions);
     });

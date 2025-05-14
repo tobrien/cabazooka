@@ -6,7 +6,7 @@ import * as Output from './output';
 export const create = async (config: Config, args: Args, options: Options): Promise<Operator> => {
 
     const output = Output.create(config, options);
-    const input = Input.create(config, args, options);
+    const input = Input.create(config, options);
 
     const constructFilename = async (createDate: Date, type: string, hash: string, context?: { subject?: string }): Promise<string> => {
         if (!options.features.includes('output')) {

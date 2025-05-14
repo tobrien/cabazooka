@@ -60,14 +60,14 @@ describe('Input Processing', () => {
     it('should throw an error if the input feature is not enabled', async () => {
         mockFeatures = []; // No features
         await expect(
-            process(mockConfig as Config, mockArgs as Args, mockFeatures, mockLogger, mockCallback)
+            process(mockConfig as Config, mockFeatures, mockLogger, mockCallback)
         ).rejects.toThrow('Input feature is not enabled, skipping input processing');
     });
 
     it('should throw an error if inputDirectory is not configured', async () => {
         delete mockConfig.inputDirectory;
         await expect(
-            process(mockConfig as Config, mockArgs as Args, mockFeatures, mockLogger, mockCallback)
+            process(mockConfig as Config, mockFeatures, mockLogger, mockCallback)
         ).rejects.toThrow('Input directory is not configured');
     });
 
@@ -77,17 +77,21 @@ describe('Input Processing', () => {
         // No need to mock resolved value here again if set in beforeEach
         // mockProcessStructuredInput.mockResolvedValue(expectedFileCount);
 
-        await process(mockConfig as Config, mockArgs as Args, mockFeatures, mockLogger, mockCallback);
+        const start = new Date('2023-01-01');
+        const end = new Date('2023-01-31');
 
-        expect(mockLogger.debug).toHaveBeenCalledWith('Processing Structured Input from %s', '/fake/input');
+        await process(mockConfig as Config, mockFeatures, mockLogger, mockCallback, { start, end });
+
+        expect(mockLogger.debug).toHaveBeenCalledWith('Processing Structured Input from %s with start date %s and end date %s', '/fake/input', start, end);
         expect(mockProcessStructuredInput).toHaveBeenCalledTimes(1);
         expect(mockProcessStructuredInput).toHaveBeenCalledWith(
             mockConfig.inputStructure,
             mockConfig.inputFilenameOptions,
             mockConfig.extensions,
             mockConfig.timezone,
-            mockArgs.start,
-            mockArgs.end,
+            start,
+            end,
+            undefined,
             mockFeatures,
             mockLogger,
             mockConfig.inputDirectory,
@@ -103,7 +107,7 @@ describe('Input Processing', () => {
         // No need to mock resolved value here again if set in beforeEach
         // mockProcessUnstructuredInput.mockResolvedValue(expectedFileCount);
 
-        await process(mockConfig as Config, mockArgs as Args, mockFeatures, mockLogger, mockCallback);
+        await process(mockConfig as Config, mockFeatures, mockLogger, mockCallback);
 
         expect(mockLogger.debug).toHaveBeenCalledWith('Processing Unstructured Input from %s', '/fake/input');
         expect(mockProcessUnstructuredInput).toHaveBeenCalledTimes(1);
@@ -111,6 +115,7 @@ describe('Input Processing', () => {
             mockConfig.inputDirectory,
             mockConfig.recursive,
             mockConfig.extensions,
+            undefined,
             mockLogger,
             mockCallback
         );
@@ -120,17 +125,17 @@ describe('Input Processing', () => {
 
     it('should pass start and end args correctly to processStructuredInput', async () => {
         mockFeatures = ['input', 'structured-input'];
-        mockArgs = { start: '2023-01-01', end: '2023-01-31' };
 
-        await process(mockConfig as Config, mockArgs as Args, mockFeatures, mockLogger, mockCallback);
+        await process(mockConfig as Config, mockFeatures, mockLogger, mockCallback, { start: new Date('2023-01-01'), end: new Date('2023-01-31') });
 
         expect(mockProcessStructuredInput).toHaveBeenCalledWith(
             expect.anything(), // config.inputStructure
             expect.anything(), // config.inputFilenameOptions
             expect.anything(), // config.extensions
             expect.anything(), // config.timezone
-            '2023-01-01',      // start arg
-            '2023-01-31',      // end arg
+            new Date('2023-01-01'),      // start arg
+            new Date('2023-01-31'),      // end arg
+            undefined, // limit
             expect.anything(), // features
             expect.anything(), // logger
             expect.anything(), // inputDirectory
@@ -143,12 +148,13 @@ describe('Input Processing', () => {
         mockConfig.recursive = true;
         mockConfig.extensions = ['.csv', '.json']; // Keep dots if source expects them
 
-        await process(mockConfig as Config, mockArgs as Args, mockFeatures, mockLogger, mockCallback);
+        await process(mockConfig as Config, mockFeatures, mockLogger, mockCallback);
 
         expect(mockProcessUnstructuredInput).toHaveBeenCalledWith(
             expect.anything(), // inputDirectory
             true,              // recursive
             ['.csv', '.json'], // extensions
+            undefined, // limit
             expect.anything(), // logger
             expect.anything()  // callback
         );

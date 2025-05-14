@@ -10,7 +10,7 @@ export const create = (config: Config, options: Options): {
     constructOutputDirectory: (creationTime: Date) => string;
 } => {
     const logger = options.logger;
-    const timezone = config.timezone || 'UTC';
+    const timezone = config?.timezone || 'UTC';
     const dates = Dates.create({ timezone });
     const storage: Storage.Utility = Storage.create({ log: logger.debug });
 

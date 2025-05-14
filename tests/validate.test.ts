@@ -258,7 +258,7 @@ describe('validate', () => {
 
     test('should throw with invalid extensions', async () => {
         await expect(runValidation({ extensions: ['eml', 'invalid', 'msg'] }))
-            .rejects.toThrow(new ArgumentError('--extensions', `Invalid extensions: eml, invalid, msg. Valid options are: md`));
+            .rejects.toThrow(new ArgumentError('--extensions', `Invalid extensions: eml, invalid, msg. Valid options are: md, txt`));
     });
 
     test('should use custom allowed extensions from options', async () => {
