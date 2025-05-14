@@ -6,6 +6,7 @@ export const process = async (
     inputDirectory: string,
     recursive: boolean,
     extensions: string[],
+    limit: number | undefined,
     logger: Logger,
     callback: (file: string) => Promise<void>
 ): Promise<number> => {
@@ -43,7 +44,7 @@ export const process = async (
                 logger.error('Error processing file %s: %s', file, error);
             }
         }
-    }, { pattern: filePattern });
+    }, { pattern: filePattern, limit });
 
     return fileCount;
 };

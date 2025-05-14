@@ -90,7 +90,7 @@ describe('configure', () => {
         expectOptionAdded('--start <date>', `start date filter (${DATE_FORMAT_YEAR_MONTH_DAY})`, undefined);
         expectOptionAdded('--end <date>', `end date filter (${DATE_FORMAT_YEAR_MONTH_DAY}), defaults to today`, undefined);
 
-        expect(mockCommand.option).toHaveBeenCalledTimes(11); // Ensure no extra options were added
+        expect(mockCommand.option).toHaveBeenCalledTimes(12); // Ensure no extra options were added
     });
 
     test('should add all options with default descriptions when addDefaults is false', async () => {
@@ -108,8 +108,8 @@ describe('configure', () => {
         expectOptionAddedWithDescDefault('--input-filename-options [options...]', 'filename format options (space-separated list of: date,time,subject)', DEFAULT_INPUT_FILENAME_OPTIONS);
         expectOptionAddedWithDescDefault('--start <date>', `start date filter (${DATE_FORMAT_YEAR_MONTH_DAY})`, undefined);
         expectOptionAddedWithDescDefault('--end <date>', `end date filter (${DATE_FORMAT_YEAR_MONTH_DAY}), defaults to today`, undefined);
-
-        expect(mockCommand.option).toHaveBeenCalledTimes(11);
+        // 12 options: 11 from baseDefaults + 1 for limit
+        expect(mockCommand.option).toHaveBeenCalledTimes(12);
     });
 
 
@@ -137,7 +137,7 @@ describe('configure', () => {
         expectOptionAdded('--input-structure <type>', 'input directory structure (none/year/month/day)', 'day');
         expectOptionAdded('--input-filename-options [options...]', expect.stringContaining('filename format options'), ['time']);
 
-        expect(mockCommand.option).toHaveBeenCalledTimes(11);
+        expect(mockCommand.option).toHaveBeenCalledTimes(12);
     });
 
 
@@ -171,7 +171,7 @@ describe('configure', () => {
         expectOptionAdded('--timezone <timezone>', 'timezone for date calculations', DEFAULT_TIMEZONE);
         expectOptionAdded('-r, --recursive', 'recursive mode, process all files in the input directory', DEFAULT_RECURSIVE);
         expectOptionAdded('--output-structure <type>', 'output directory structure (none/year/month/day)', DEFAULT_OUTPUT_STRUCTURE); // Still added by structured-output
-        expect(mockCommand.option).toHaveBeenCalledTimes(11 - 1);
+        expect(mockCommand.option).toHaveBeenCalledTimes(12 - 1);
     });
 
 
@@ -185,7 +185,7 @@ describe('configure', () => {
         // Check others are still added
         expectOptionAdded('--timezone <timezone>', 'timezone for date calculations', DEFAULT_TIMEZONE);
         expectOptionAdded('-o, --output-directory <outputDirectory>', 'output directory', DEFAULT_OUTPUT_DIRECTORY);
-        expect(mockCommand.option).toHaveBeenCalledTimes(11 - 2);
+        expect(mockCommand.option).toHaveBeenCalledTimes(12 - 2);
     });
 
     test('should skip extensions option if "extensions" feature is disabled', async () => {
@@ -197,7 +197,7 @@ describe('configure', () => {
         // Check others are still added
         expectOptionAdded('--timezone <timezone>', 'timezone for date calculations', DEFAULT_TIMEZONE);
         expectOptionAdded('--output-filename-options [outputFilenameOptions...]', expect.stringContaining('filename format options'), DEFAULT_OUTPUT_FILENAME_OPTIONS);
-        expect(mockCommand.option).toHaveBeenCalledTimes(11 - 1);
+        expect(mockCommand.option).toHaveBeenCalledTimes(12 - 1);
     });
 
     test('should skip structured input options if "structured-input" feature is disabled', async () => {
@@ -212,7 +212,7 @@ describe('configure', () => {
         // Check others are still added
         expectOptionAdded('--timezone <timezone>', 'timezone for date calculations', DEFAULT_TIMEZONE);
         expectOptionAdded('--extensions [extensions...]', expect.stringContaining('file extensions to process'), DEFAULT_EXTENSIONS);
-        expect(mockCommand.option).toHaveBeenCalledTimes(11 - 4);
+        expect(mockCommand.option).toHaveBeenCalledTimes(12 - 4);
     });
 
 });

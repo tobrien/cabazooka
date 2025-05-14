@@ -349,6 +349,7 @@ describe('structured.ts', () => {
                 'UTC',
                 new Date('2022-01-01'),
                 new Date('2023-01-01'),
+                undefined,
                 features,
                 mockLogger,
                 '/input',

@@ -353,6 +353,7 @@ export const process = async (
     timezone: string,
     start: Date,
     end: Date,
+    limit: number | undefined,
     features: Feature[],
     logger: Logger,
     inputDirectory: string,
@@ -402,7 +403,7 @@ export const process = async (
         if (processed) {
             fileCount++;
         }
-    }, { pattern: filePattern });
+    }, { pattern: filePattern, limit });
 
     return fileCount;
 }

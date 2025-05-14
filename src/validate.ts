@@ -124,6 +124,12 @@ export const validate = async (config: Config, options: Options): Promise<void> 
         await validateInputDirectory(config.inputDirectory);
     }
 
+    if (options.features.includes('input') && config.limit) {
+        if (config.limit < 1) {
+            throw new ArgumentError('--limit', 'Limit must be greater than 0');
+        }
+    }
+
     if (options.features.includes('output') && config.outputDirectory) {
         await validateOutputDirectory(config.outputDirectory);
     }

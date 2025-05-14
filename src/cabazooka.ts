@@ -7,6 +7,7 @@ import { validate } from './validate';
 import { ALLOWED_EXTENSIONS, ALLOWED_INPUT_FILENAME_OPTIONS, ALLOWED_INPUT_STRUCTURES, ALLOWED_OUTPUT_FILENAME_OPTIONS, ALLOWED_OUTPUT_STRUCTURES, DEFAULT_EXTENSIONS, DEFAULT_INPUT_DIRECTORY, DEFAULT_INPUT_FILENAME_OPTIONS, DEFAULT_INPUT_STRUCTURE, DEFAULT_OUTPUT_DIRECTORY, DEFAULT_OUTPUT_FILENAME_OPTIONS, DEFAULT_OUTPUT_STRUCTURE, DEFAULT_RECURSIVE, DEFAULT_TIMEZONE } from './constants';
 import { z } from 'zod';
 import { create as createOperator } from './operate';
+import { wrapLogger } from './logger';
 
 export interface Args {
     recursive: boolean;
@@ -20,6 +21,7 @@ export interface Args {
     extensions: string[];
     start?: string; // Start date string
     end?: string;   // End date string
+    limit?: number; // Limit the number of files to process
 }
 
 export type Feature = 'input' | 'output' | 'structured-output' | 'structured-input' | 'extensions';
@@ -53,6 +55,7 @@ export interface DefaultOptions {
     extensions?: string[];
     startDate?: string;
     endDate?: string;
+    limit?: number;
 }
 
 export interface AllowedOptions {
@@ -135,6 +138,7 @@ export const ConfigSchema = z.object({
     outputStructure: FilesystemStructureSchema.optional(),
     outputFilenameOptions: z.array(FilenameOptionSchema).optional(),
     extensions: z.array(z.string()).optional(),
+    limit: z.number().optional(),
 });
 
 export interface DateRange {
@@ -170,13 +174,13 @@ export const create = (
         allowed: { ...DEFAULT_ALLOWED_OPTIONS, ...creationOptsParam.allowed },
         features: creationOptsParam.features || DEFAULT_FEATURES,
         addDefaults: creationOptsParam.addDefaults === undefined ? DEFAULT_OPTIONS.addDefaults : creationOptsParam.addDefaults,
-        logger: creationOptsParam.logger || DEFAULT_OPTIONS.logger
+        logger: wrapLogger(creationOptsParam.logger || DEFAULT_OPTIONS.logger)
     };
 
     return {
         configure: async (command: Command) => configure(command, options.defaults || {}, options.addDefaults, options.features),
         setLogger: (logger: Logger) => {
-            options.logger = logger;
+            options.logger = wrapLogger(logger);
         },
         read: async (pArgs: Args) => {
             args = pArgs;

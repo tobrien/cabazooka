@@ -91,6 +91,7 @@ describe('Input Processing', () => {
             mockConfig.timezone,
             start,
             end,
+            undefined,
             mockFeatures,
             mockLogger,
             mockConfig.inputDirectory,
@@ -114,6 +115,7 @@ describe('Input Processing', () => {
             mockConfig.inputDirectory,
             mockConfig.recursive,
             mockConfig.extensions,
+            undefined,
             mockLogger,
             mockCallback
         );
@@ -133,6 +135,7 @@ describe('Input Processing', () => {
             expect.anything(), // config.timezone
             new Date('2023-01-01'),      // start arg
             new Date('2023-01-31'),      // end arg
+            undefined, // limit
             expect.anything(), // features
             expect.anything(), // logger
             expect.anything(), // inputDirectory
@@ -151,6 +154,7 @@ describe('Input Processing', () => {
             expect.anything(), // inputDirectory
             true,              // recursive
             ['.csv', '.json'], // extensions
+            undefined, // limit
             expect.anything(), // logger
             expect.anything()  // callback
         );

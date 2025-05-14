@@ -26,7 +26,7 @@ export const process = async (
         if (!start || !end) {
             throw new Error('Start or end date are both required for structured input');
         } else {
-            fileCount = await processStructuredInput(config.inputStructure!, config.inputFilenameOptions!, config.extensions!, config.timezone, start, end, features, logger, inputDirectory, callback)
+            fileCount = await processStructuredInput(config.inputStructure!, config.inputFilenameOptions!, config.extensions!, config.timezone, start, end, config.limit, features, logger, inputDirectory, callback)
         }
 
 
@@ -38,7 +38,7 @@ export const process = async (
             throw new Error('Start or end date is not allowed for unstructured input');
         }
 
-        fileCount = await processUnstructuredInput(inputDirectory, config.recursive || false, config.extensions || [], logger, callback);
+        fileCount = await processUnstructuredInput(inputDirectory, config.recursive || false, config.extensions || [], config.limit, logger, callback);
     }
 
     logger.info('Processed %d files matching criteria.', fileCount);

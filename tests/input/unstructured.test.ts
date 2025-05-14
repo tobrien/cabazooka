@@ -84,7 +84,7 @@ describe('Input: Unstructured Process', () => {
             await callback('file2.log');
         });
 
-        const count = await processUnstructured(inputDirectory, recursive, extensions, mockLogger, mockCallback);
+        const count = await processUnstructured(inputDirectory, recursive, extensions, undefined, mockLogger, mockCallback);
 
         expect(mockStorageCreate).toHaveBeenCalledWith({ log: mockLogger.debug });
         expect(mockLogger.info).toHaveBeenCalledWith(
@@ -119,7 +119,7 @@ describe('Input: Unstructured Process', () => {
             // file3.txt should be ignored by the pattern
         });
 
-        const count = await processUnstructured(inputDirectory, recursive, extensions, mockLogger, mockCallback);
+        const count = await processUnstructured(inputDirectory, recursive, extensions, undefined, mockLogger, mockCallback);
 
         expect(mockLogger.info).toHaveBeenCalledWith(
             'Processing unstructured files %s in %s with pattern %s',
@@ -152,7 +152,7 @@ describe('Input: Unstructured Process', () => {
             await callback('another/subdir/file3');
         });
 
-        const count = await processUnstructured(inputDirectory, recursive, extensions, mockLogger, mockCallback);
+        const count = await processUnstructured(inputDirectory, recursive, extensions, undefined, mockLogger, mockCallback);
 
         expect(mockLogger.info).toHaveBeenCalledWith(
             'Processing unstructured files %s in %s with pattern %s',
@@ -185,7 +185,7 @@ describe('Input: Unstructured Process', () => {
             // subdir/file3.eml should be ignored
         });
 
-        const count = await processUnstructured(inputDirectory, recursive, extensions, mockLogger, mockCallback);
+        const count = await processUnstructured(inputDirectory, recursive, extensions, undefined, mockLogger, mockCallback);
 
         expect(mockLogger.info).toHaveBeenCalledWith(
             'Processing unstructured files %s in %s with pattern %s',
@@ -224,7 +224,7 @@ describe('Input: Unstructured Process', () => {
             await callback(successFile);
         });
 
-        const count = await processUnstructured(inputDirectory, recursive, extensions, mockLogger, mockCallback);
+        const count = await processUnstructured(inputDirectory, recursive, extensions, undefined, mockLogger, mockCallback);
 
         expect(mockCallback).toHaveBeenCalledTimes(2);
         expect(mockCallback).toHaveBeenCalledWith(errorFile);
@@ -259,7 +259,7 @@ describe('Input: Unstructured Process', () => {
             await callback(successFile);
         });
 
-        const count = await processUnstructured(inputDirectory, recursive, extensions, mockLogger, mockCallback);
+        const count = await processUnstructured(inputDirectory, recursive, extensions, undefined, mockLogger, mockCallback);
 
         expect(mockCallback).toHaveBeenCalledTimes(2);
         expect(mockLogger.error).toHaveBeenCalledTimes(1);
@@ -281,7 +281,7 @@ describe('Input: Unstructured Process', () => {
             // Simulate no files found
         });
 
-        const count = await processUnstructured(inputDirectory, recursive, extensions, mockLogger, mockCallback);
+        const count = await processUnstructured(inputDirectory, recursive, extensions, undefined, mockLogger, mockCallback);
 
         expect(mockForEachFileIn).toHaveBeenCalled();
         expect(mockCallback).not.toHaveBeenCalled();
