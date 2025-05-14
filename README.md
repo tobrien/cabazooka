@@ -244,7 +244,7 @@ While Cabazooka offers a rich set of command-line arguments, for complex or freq
 
 Here's a conceptual example of how you might use `@tobrien/givemetheconfig` to load settings before configuring Cabazooka. This example is inspired by how a sister project, Cortalyne, integrates these libraries:
 
-```typescript
+```js
 import { Command } from 'commander';
 import * as Cabazooka from '@tobrien/cabazooka';
 import * as GiveMeTheConfig from '@tobrien/givemetheconfig';
@@ -257,7 +257,7 @@ const AppSpecificSchema = z.object({
    myCustomOption: z.string().optional(),
  });
 
-export const clean = (obj: any) => {
+const clean = (obj: any) => {
     return Object.fromEntries(
         Object.entries(obj).filter(([_, v]) => v !== undefined)
     );
