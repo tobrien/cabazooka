@@ -20,7 +20,7 @@
         "start": "dist/main.js",
         "dev": "vite",
         "watch": "vite build --watch",
-        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",
         "clean": "rm -rf dist",
